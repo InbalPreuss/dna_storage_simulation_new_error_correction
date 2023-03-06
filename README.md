@@ -63,8 +63,8 @@ block size. If the division results in a gap, the data is padded with zeros to c
 is applied lengthwise on each sequence twice, error correcting each barcode sequence and then each payload 
 sequence. It is also used crosswise on all the sequences in one block size. (See Section 3.2). 
 2. Synthesis and sequencing
-2.1. Simulating the synthesis process. The synthesis of each combinatorial sequence was simulated separately. 
-For a fixed sequence we first draw, from 𝑋~𝑁(𝜇 =predtermined, 𝜎
+       2.1. Simulating the synthesis process. The synthesis of each combinatorial sequence was simulated separately. 
+For a fixed sequence we first draw, from 𝑋`~`𝑁(𝜇 =predtermined, 𝜎
 2 = 100), the number of molecules that 
 will represent it. Let this number be x. All k-mers that occur within a single position (cycle) are then 
 generated. To do this, x numbers of the subset are selected, representing the relevant 𝜎. The size of this 
