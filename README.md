@@ -56,20 +56,19 @@ Each run included:
 * Sampeling rate simulated: 10 – 1000 reads on average per barcode
 
 ### Algorithm approce:
-1. Encoding
+1. Encoding  
 1.1. Data padding. To fit the binary data onto the molecule, it must be divided by the molecule size and the 
 block size. If the division results in a gap, the data is padded with zeros to close this gap. 
 1.2. 2D-error correction using Reed-Solomon decoding. Reed Solomon (RS) is used a total of three times. It 
 is applied lengthwise on each sequence twice, error correcting each barcode sequence and then each payload 
 sequence. It is also used crosswise on all the sequences in one block size. (See Section 3.2). 
-2. Synthesis and sequencing
-       2.1. Simulating the synthesis process. The synthesis of each combinatorial sequence was simulated separately. 
+2. Synthesis and sequencing 2.1. Simulating the synthesis process. The synthesis of each combinatorial sequence was simulated separately. 
 For a fixed sequence we first draw, from 𝑋`~`𝑁(𝜇 =predtermined, 𝜎
 2 = 100), the number of molecules that 
 will represent it. Let this number be x. All k-mers that occur within a single position (cycle) are then 
 generated. To do this, x numbers of the subset are selected, representing the relevant 𝜎. The size of this 
 subset is 𝐾, and its members will most likely be represented many times. This random composition is 
-achieved by drawing a total of x independent times, according to 𝑌~𝑈(1,𝐾). 1s in 𝜎 are indexed at
+achieved by drawing a total of x independent times, according to 𝑌`~`𝑈(1,𝐾). 1s in 𝜎 are indexed at
 1, …, 𝐾, and the appropriate k-mers are “synthesized” in accordance with the drawn index. 
 2.2. Mixing. Once all of the molecules are synthesized, they are mixed to mimic real molecules in a container.
 2.3. Error simulation. To replicate a real synthesis and sequencing process, several error scenarios were 
