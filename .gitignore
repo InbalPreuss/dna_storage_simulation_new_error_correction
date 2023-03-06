@@ -1,0 +1,14 @@
+# Default ignored files
+.DS_Store
+/workspace.xml
+/DNAStorage/.idea
+/DNAStorage/venv
+data/*
+!data/testing/
+data/testing/*
+!data/testing/input_text.dna
+venv/
+**/__pycahce__/**
+*.py[cod]
+.idea
+not relevent/
