@@ -1,11 +1,31 @@
-# DnaStorage
+# DNA Storage
 
 ## Usage
+### Setting Up the Environment
 
+Before running the simulations, it's recommended to set up a virtual environment to manage dependencies. This ensures that the project's dependencies do not conflict with those of other Python projects on your system.
 Create a venv (recommended)
-
+1. Clone the Repository
 ```console
-git clone https://github.com/InbalPreuss/DnaStorage.git
+https://github.com/InbalPreuss/dna_storage_shortmer_simulation.git
+cd dna_storage_shortmer_simulation
+```
+2. Create a Virtual Environment (venv)
+
+For Unix or MacOS:
+```console
+python3 -m venv venv
+source venv/bin/activate
+```
+
+For Windows:
+```console
+python -m venv venv
+.\venv\Scripts\activate
+```
+
+3. Install Dependencies
+```console
 pip install -r requirements.txt
 ```
 
