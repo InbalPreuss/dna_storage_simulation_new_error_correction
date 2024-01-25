@@ -296,7 +296,90 @@ def draw_errorbar_10_100sample_and_0_001_error_errortypes(df: pd.DataFrame, perc
         plt.savefig(Path("data/testing/plots") / "".join(wrap(title, 71)))
         plt.close()
 
+# Fig draw_lineplot_in_one_graph:
+# Title = Normalized LD as a function of sample size error=0.01 (No error correction)
+# X = number of reads (10-100)
+# Y = Normalized distance (with error bars, show the zero!)
+# Color = error type {S,I,D}
+# Filter: size = 5
+def draw_errorbar_in_one_graph(df: pd.DataFrame, is_normalize_data, percentage: bool = False):
+    # samples = [10, 20, 50, 100]
+    samples = [10, 20, 50, 100, 200]
+    error_values = [0.01]
+    size = [5]
+    title_start = ""
 
+    trials_group = df.groupby([
+        'number_of_oligos_per_barcode',
+        'size',
+        'bits_per_z'
+    ])
+
+    errors = ["substitution_error", "deletion_error", "insertion_error"]
+    y_values = {
+        "levenshtein_distance_sigma_before_rs": "input_data_encoder_results_file_len",
+        "levenshtein_distance_sigma_after_rs_wide": "input_data_encoder_without_rs_wide_len"
+    }
+    if is_normalize_data:
+        title_start = "Normalized "
+        for y_value in y_values.items():
+            df[y_value[0]] = df.apply(lambda x: x[y_value[0]] / x.get(y_value[1], 1), axis=1)
+
+    for idx, trial_group in trials_group:
+        if idx[1] not in size:
+            continue
+        for y_value in y_values.keys():
+            title = title_start + "LD as a function of sample size. Error=0.01, 0 (No error correction)\n" + y_value
+            fig, ax = plt.subplots(figsize=(8, 6))
+
+            fig.subplots_adjust(top=0.85, hspace=0.5, right=0.8)
+            for ax_idx, error in enumerate(errors):
+                zero_cols = [e for e in errors if e != error]
+                df_for_err = trial_group
+                for col in zero_cols:
+                    df_for_err = df_for_err[df_for_err[col] == 0]
+
+                if error == "deletion_error":
+                    error_values.append(0)
+
+                for error_value in error_values:
+                    df_for_err_filtered = df_for_err.where(df_for_err[error] == error_value)
+                    df_for_err_filtered = df_for_err_filtered[
+                        df_for_err_filtered['number_of_sampled_oligos_from_file'].isin(samples)]
+
+                    grouped = df_for_err_filtered.groupby('number_of_sampled_oligos_from_file')[
+                        y_value].apply(list)
+                    result = {key: value for key, value in grouped.to_dict().items()}
+
+                    std_error = np.std(list(result.values()), axis=1)
+                    mean_error = np.mean(list(result.values()), axis=1)
+
+                    if error == "deletion_error" and error_value == 0:
+                        plt.errorbar(samples, mean_error + 0.004, yerr=std_error, markersize=15,
+                                     elinewidth=1, capsize=3,
+                                     label='all errors' + ' ' + str(error_value), linewidth=3)
+                    else:
+                        plt.errorbar(samples, mean_error, yerr=std_error, markersize=15,
+                                     elinewidth=1, capsize=3, label=error.replace("_error", "")+' '+str(error_value), linewidth=3)
+
+                if error == "deletion_error":  # reset your error_values list after processing substitution_error
+                    error_values.remove(0)
+
+                plt.legend(fontsize=18)
+                ax.tick_params(axis='x', labelsize=20)
+                ax.tick_params(axis='y', labelsize=20)
+                ax.set_xlabel('#Simulated Reads Per Sequence (Mean)', x=0.5, y=-5, fontsize=20)
+                ax.set_ylabel(title_start+'Levenshtein Distance', fontsize=20)
+
+                if is_normalize_data:
+                    ax.set_ylim(-0.01, 1)
+                else:
+                    ax.set_ylim(-0.01, 10000)
+
+            # plt.title(title)
+            fig.tight_layout()
+            fig.savefig(Path("data/testing/plots") / "".join(wrap(title + ".svg", 71)))
+            plt.close(fig)
 # Fig draw_lineplot_in_one_graph:
 # Title = Normalized LD as a function of sample size error=0.01 (No error correction)
 # X = number of reads (10-100)
@@ -537,6 +620,7 @@ def main():
     '''Graphs in paper'''
     # draw_errorbar_10_100sample_and_0_001_error_errortypes(df=df)
     # draw_errorbar_in_one_graph(df=df)
+    draw_errorbar_in_one_graph(df=df, is_normalize_data=True)
     # draw_errorbar_before_after_rs(df=df, percentage=True)
     # draw_errorbar_before_after_rs(df=df)
     # input("Hit enter to terminate")
