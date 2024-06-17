@@ -4,7 +4,7 @@ import re
 from typing import Union, Dict, List
 from pathlib import Path
 
-from unireedsolomon import RSCodecError
+from unireedsolomon.unireedsolomon import RSCodecError
 
 from dna_storage.rs_adapter import RSBarcodeAdapter, RSPayloadAdapter, RSWideAdapter
 from dna_storage import utils

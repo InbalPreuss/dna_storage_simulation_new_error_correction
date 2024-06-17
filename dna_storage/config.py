@@ -8,8 +8,8 @@ PathLike = Union[str, pathlib.Path]
 
 
 def build_config(
-    subset_size: int = 5,
-    bits_per_z: int = 12,
+    subset_size: int = 4,
+    bits_per_z: int = 6,
     letter_substitution_error_ratio: int = 0,
     letter_deletion_error_ratio: int = 0,
     letter_insertion_error_ratio: int = 0,
@@ -23,6 +23,23 @@ def build_config(
     output_dir = pathlib.Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # shrink_dict_3_mer = {'AAT': 'X1',
+    #                      'ACA': 'X2',
+    #                      'ATG': 'X3',
+    #                      'AGC': 'X4',
+    #                      'TAA': 'X5',
+    #                      'TCT': 'X6',
+    #                      'TTC': 'X7',
+    #                      'TGG': 'X8',
+    #                      'GAG': 'X9',
+    #                      'GCC': 'X10',
+    #                      'GTT': 'X11',
+    #                      'GGA': 'X12',
+    #                      'CAC': 'X13',
+    #                      'CCG': 'X14',
+    #                      'CTA': 'X15',
+    #                      'CGT': 'X16'}
+
     shrink_dict_3_mer = {'AAT': 'X1',
                          'ACA': 'X2',
                          'ATG': 'X3',
@@ -30,15 +47,10 @@ def build_config(
                          'TAA': 'X5',
                          'TCT': 'X6',
                          'TTC': 'X7',
-                         'TGG': 'X8',
-                         'GAG': 'X9',
-                         'GCC': 'X10',
-                         'GTT': 'X11',
-                         'GGA': 'X12',
-                         'CAC': 'X13',
-                         'CCG': 'X14',
-                         'CTA': 'X15',
-                         'CGT': 'X16'}
+                         'TGG': 'X8'}
+
+    subset_size = 4
+    bits_per_z = 6
 
     shrink_dict_size = len(shrink_dict_3_mer)
 
@@ -115,14 +127,15 @@ def build_config(
     }
 
     wide_n_k = {3: {'block_len': 42, 'block_rs_len': 6},
+                4: {'block_len': 30, 'block_rs_len': 2},
                 5: {'block_len': 42, 'block_rs_len': 6},
                 7: {'block_len': 42, 'block_rs_len': 6}}
 
     if config['mode'] == 'prod':
         config['barcode_len'] = 12  # in ACGT
         config['barcode_rs_len'] = 4  # in ACGT
-        config['payload_len'] = 120  # in Z
-        config['payload_rs_len'] = 14  # in Z
+        config['payload_len'] = 6  # in Z
+        config['payload_rs_len'] = 2  # in Z
         config['oligos_per_block_len'] = wide_n_k[subset_size]['block_len']
         config['oligos_per_block_rs_len'] = wide_n_k[subset_size]['block_rs_len']
         config['number_of_sampled_oligos_from_file'] = number_of_sampled_oligos_from_file * (wide_n_k[subset_size]['block_len'] + (wide_n_k[subset_size]['block_rs_len']))

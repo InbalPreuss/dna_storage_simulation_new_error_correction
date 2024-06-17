@@ -86,8 +86,10 @@ def build_runs():
     oligos_and_samples = [s for s in oligos_and_samples if s[0] >= s[1]]
 
     errors = [0.01, 0.001, 0.0001, 0]
-    sizes_and_bit_sizes = [(3, 9), (5, 12), (7, 13)]
-    variable_number_of_sampled_oligos_from_file = {3: 5, 5: 10, 7: 15}
+    # sizes_and_bit_sizes = [(3, 9), (5, 12), (7, 13)]
+    sizes_and_bit_sizes = [(4, 6)]
+    # variable_number_of_sampled_oligos_from_file = {3: 5, 5: 10, 7: 15}
+    variable_number_of_sampled_oligos_from_file = {4: 6}
 
     runs = []
     was_variable = False
@@ -102,10 +104,11 @@ def build_runs():
                         continue
                     was_variable = True
                     number_of_sampled_oligos_from_file = variable_number_of_sampled_oligos_from_file[size]
-                name = f'[ subset size {size}, bits per z {bits_per_z:>2} ]' \
-                       f'[ number of oligos per barcode {number_of_oligos_per_barcode:>6} ]\n' \
-                       f'[ number of oligos sampled after synthesis {number_of_sampled_oligos_from_file:>6} ]\n' \
-                       f'[ errors, substitution {prod[0]:<6}, deletion {prod[1]:<6}, insertion {prod[2]:<6} ]\n'
+                #name = f'[subset size {size}, bits per z {bits_per_z:>2} ]' \
+                #       f'[num oligos per bc {number_of_oligos_per_barcode:>6} ]\n' \
+                #       f'[num oligos sampled after syn {number_of_sampled_oligos_from_file:>6} ]\n' \
+                #       f'[errors, sub {prod[0]:<6}, del {prod[1]:<6}, inser {prod[2]:<6} ]\n'
+                name = "denkta"
                 output_dir = os.path.join("data/testing/", name.replace("\n", ""))
                 runs.append({
                     "number_of_oligos_per_barcode": number_of_oligos_per_barcode,
@@ -202,7 +205,7 @@ def main_fn():
     from multiprocessing import Pool, cpu_count
     configs_for_run = build_runs()
     q_listener, q = logger_init()
-    with Pool(cpu_count(), worker_init, [q]) as p:
+    with Pool(1, worker_init, [q]) as p:
         p.map(run_config_n_times, configs_for_run)
 
 if __name__ == '__main__':

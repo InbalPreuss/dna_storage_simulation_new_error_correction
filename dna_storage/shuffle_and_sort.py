@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 import sqlite3
 
-from unireedsolomon import RSCodecError
+from unireedsolomon.unireedsolomon import RSCodecError
 
 from dna_storage.config import PathLike
 from dna_storage.rs_adapter import RSBarcodeAdapter

@@ -103,6 +103,10 @@ class Encoder:
         if isinstance(payload, str):
             payload = [c for c in payload]
         if payload_or_wide == 'payload':
+            ###########################we want to do reed solomon on the 6 bits?
+            for sigma in payload:
+                print(bin(int(sigma[1:])-1).zfill(6))
+            ###########################
             payload_encoded = self.payload_coder.encode(payload)
         else:
             payload_encoded = self.wide_coder.encode(payload)

@@ -1,8 +1,8 @@
 import itertools
 
 import numpy as np
-from unireedsolomon import rs, RSCodecError
-from unireedsolomon import ff
+from unireedsolomon.unireedsolomon import rs, RSCodecError
+from unireedsolomon.unireedsolomon import ff
 
 
 class RSBarcodeAdapter:
@@ -46,9 +46,52 @@ class RSBarcodeAdapter:
                 barcode += list(self._int_to_barcode_pairs[i])
             return barcode
 
+#
+# class RSPayloadAdapter:
+#     def __init__(self, bits_per_z, payload_len, payload_rs_len):
+#         self.bits_per_z = bits_per_z
+#         self.payload_len = payload_len
+#         alphabet = ['Z{}'.format(i) for i in range(1, 2**bits_per_z+1)]
+#         n = payload_len + payload_rs_len
+#         k = payload_len
+#         c_exp = bits_per_z
+#         generator = 3
+#         prim = ff.find_prime_polynomials(generator=generator, c_exp=c_exp, fast_primes=False, single=True)
+#
+#         self._payload_coder = rs.RSCoder(n=n, k=k, generator=generator, prim=prim, c_exp=c_exp)
+#         self.ff_globals = ff.get_globals()
+#         self._payload_to_int = {''.join(vv): i for i, vv in enumerate(alphabet)}
+#         self._int_to_payload = {i: vv for vv, i in self._payload_to_int.items()}
+#
+#     def encode(self, payload):
+#         ff.set_globals(*self.ff_globals)
+#         payload_as_int = [self._payload_to_int[z] for z in payload]
+#         ff.set_globals(*self.ff_globals)
+#         payload_encoded_as_polynomial = self._payload_coder.encode_fast(payload_as_int, return_string=False)
+#         payload_encoded = [self._int_to_payload[z] for z in payload_encoded_as_polynomial]
+#         return payload_encoded
+#
+#     def decode(self, payload_encoded):
+#         ff.set_globals(*self.ff_globals)
+#         payload_as_int = [self._payload_to_int[z] for z in payload_encoded]
+#         if self._payload_coder.check_fast(payload_as_int):
+#             return payload_encoded[0:self.payload_len]
+#         else:
+#             try:
+#                 payload_as_gf, rs_as_gf = self._payload_coder.decode(payload_as_int, nostrip=True, return_string=False)
+#             except RSCodecError:
+#                 return payload_encoded[0:self.payload_len]
+#             payload = [self._int_to_payload[i] for i in payload_as_gf]
+#             return payload
+
 
 class RSPayloadAdapter:
     def __init__(self, bits_per_z, payload_len, payload_rs_len):
+        ###########################
+        bits_per_z = 4
+        payload_len = 6
+        payload_rs_len = 2
+        ###########################
         self.bits_per_z = bits_per_z
         self.payload_len = payload_len
         alphabet = ['Z{}'.format(i) for i in range(1, 2**bits_per_z+1)]
