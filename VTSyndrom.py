@@ -18,7 +18,7 @@ class VTSyndrom:
     def generate_table(self):
         table = [[],[],[],[],[],[],[],[]]
         for ones_positions in combinations(range(self.n), self.k):
-            bits = self.create_word(ones_positions, self.n)
+            bits = self.create_word(ones_positions)
             syndrome_sum = sum((i + 1) * bit for i, bit in enumerate(bits))
             #sum = np.sum((1 + np.arange(n_y)) * y)
             syndrom_index = np.mod(syndrome_sum, self.n)
@@ -43,13 +43,14 @@ class VTSyndrom:
         return syndrom, index, table[syndrom][index]
 
     def create_table(self):
-         table = self.generate_table(self.n, self.k)
+         table = self.generate_table()
          return table
          # chosen_vector = table[syndrom, index]#4 zeros and 4 ones
          # print_table(table)
 
-"""
-def main():
+
+if __name__ == '__main__':
+
     n = 8
     k = 4
     vtsynd = VTSyndrom(n,k)
@@ -59,9 +60,10 @@ def main():
     syn, ind, xs_vector =vtsynd.one_letter(table, [0,0,1,0,0,1])
     print(syn)
     vtsynd.one_letter(table, [0, 0, 1, 0, 0, 1])
-    vtsynd.one_letter(table, [0, 0, 1, 0, 0, 1])
-    vtsynd.one_letter(table, [0, 0, 1, 0, 0, 1])
+    vtsynd.one_letter(table, [0, 0, 1, 0, 1, 1])
+    vtsynd.one_letter(table, [0, 1, 1, 0, 0, 0])
     vtsynd.one_letter(table, [0, 0, 1, 0, 0, 1])
 
-main()
-"""
+    x=4
+
+

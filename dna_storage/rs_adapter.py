@@ -46,7 +46,7 @@ class RSBarcodeAdapter:
                 barcode += list(self._int_to_barcode_pairs[i])
             return barcode
 
-#
+
 # class RSPayloadAdapter:
 #     def __init__(self, bits_per_z, payload_len, payload_rs_len):
 #         self.bits_per_z = bits_per_z
@@ -88,9 +88,9 @@ class RSBarcodeAdapter:
 class RSPayloadAdapter:
     def __init__(self, bits_per_z, payload_len, payload_rs_len):
         ###########################
-        bits_per_z = 4
-        payload_len = 6
-        payload_rs_len = 2
+        bits_per_z = 3
+        payload_len = 4
+        payload_rs_len = 3
         ###########################
         self.bits_per_z = bits_per_z
         self.payload_len = payload_len
@@ -98,8 +98,9 @@ class RSPayloadAdapter:
         n = payload_len + payload_rs_len
         k = payload_len
         c_exp = bits_per_z
-        generator = 3
+        generator = 2
         prim = ff.find_prime_polynomials(generator=generator, c_exp=c_exp, fast_primes=False, single=True)
+        # prim = ff.find_prime_polynomials(generator=generator, c_exp=c_exp, fast_primes=False, single=False)
 
         self._payload_coder = rs.RSCoder(n=n, k=k, generator=generator, prim=prim, c_exp=c_exp)
         self.ff_globals = ff.get_globals()
