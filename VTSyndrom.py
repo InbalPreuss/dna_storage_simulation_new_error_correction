@@ -19,7 +19,7 @@ class VTSyndrom:
         table = [[],[],[],[],[],[],[],[]]
         for ones_positions in combinations(range(self.n), self.k):
             bits = self.create_word(ones_positions)
-            syndrome_sum = sum((i + 1) * bit for i, bit in enumerate(bits))
+            syndrome_sum = sum(i * bit for i, bit in enumerate(bits))
             #sum = np.sum((1 + np.arange(n_y)) * y)
             syndrom_index = np.mod(syndrome_sum, self.n)
             if len(table[syndrom_index]) < 8:

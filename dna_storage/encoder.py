@@ -31,6 +31,8 @@ class Encoder:
                  wide_coder: RSWideAdapter,
                  results_file: Union[Path, str],
                  results_file_without_rs_wide: Union[Path, str],
+                 z_to_binary: Dict,
+                 z_to_k_mer_in_binary_representative: Dict,
                  ):
         self.file_name = binary_file_name
         self.barcode_len = barcode_len
@@ -52,6 +54,8 @@ class Encoder:
         self.barcode_coder = barcode_coder
         self.payload_coder = payload_coder
         self.wide_coder = wide_coder
+        self.z_to_binary = z_to_binary
+        self.z_to_k_mer_in_binary_representative = z_to_k_mer_in_binary_representative
 
     def run(self):
         number_of_blocks = 0
@@ -60,16 +64,18 @@ class Encoder:
             for line in file:
                 line = line.strip('\n')
                 z_list = []
+                binary_list = []
                 for binary_to_transform in wrap(line, self.bits_per_z):
                     z = self.binary_to_z(binary=binary_to_transform)
                     z_list.append(z)
+                    binary_list.append(binary_to_transform)
                 z_list_accumulation_per_block.append(z_list)
                 if len(z_list_accumulation_per_block) == self.oligos_per_block_len:
                     number_of_blocks += 1
                     z_list_accumulation_with_rs = self.wide_block_rs(z_list_accumulation_per_block)
                     amount_oligos_per_block_len_to_write = self.oligos_per_block_len
                     for z_list in z_list_accumulation_with_rs:
-                        oligo = self.z_to_oligo(z_list)
+                        oligo = self.z_to_oligo(z_list, binary_list)
                         self.save_oligo(results_file=self.results_file, oligo=oligo)
                         if amount_oligos_per_block_len_to_write > 0:
                             self.save_oligo(results_file=self.results_file_without_rs_wide, oligo=oligo)
@@ -81,8 +87,8 @@ class Encoder:
         binary_tuple = tuple([int(b) for b in binary])
         return self.binary_to_z_dict[binary_tuple]
 
-    def z_to_oligo(self, z_list: List[str]) -> str:
-        oligo = self.add_payload_rs_symbols_for_error_correction(payload=z_list)
+    def z_to_oligo(self, z_list: List[str], binary_list: List[str]) -> str:
+        oligo = self.add_payload_rs_symbols_for_error_correction(payload=z_list, binary_list=binary_list)
         barcode = next(self.barcode_generator)
         barcode = self.add_barcode_rs_symbols_for_error_correction(barcode=barcode)
         barcode = "".join(barcode)
@@ -99,6 +105,7 @@ class Encoder:
         return rs_append
 
     def add_payload_rs_symbols_for_error_correction(self, payload: Union[str, List[str]],
+                                                    binary_list: List[str] = None,
                                                     payload_or_wide: str = 'payload') -> List[str]:
         if isinstance(payload, str):
             payload = [c for c in payload]
@@ -107,9 +114,9 @@ class Encoder:
             for sigma in payload:
                 print(bin(int(sigma[1:])-1).zfill(6))
             ###########################
-            payload_encoded = self.payload_coder.encode(payload)
+            payload_encoded = self.payload_coder.encode(payload=payload, binary_list=binary_list)
         else:
-            payload_encoded = self.wide_coder.encode(payload)
+            payload_encoded = self.wide_coder.encode(payload=payload)
 
         return payload_encoded
 

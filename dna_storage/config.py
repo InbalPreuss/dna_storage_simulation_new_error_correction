@@ -71,6 +71,16 @@ def build_config(
 
     k_mer_to_dna = {v: k for k, v in shrink_dict_3_mer.items()}
 
+    # z_to_k_mer_in_binary_representative = {}
+    # for key, values in z_to_k_mer_representative.items():
+    #     # Initialize an array of zeros with the specified size
+    #     array = [0] * shrink_dict_size
+    #     # Iterate over the Xi values and set the corresponding index to 1
+    #     for value in values:
+    #         index = int(value[1:]) - 1  # Extract the integer part of Xi and adjust for zero-based index
+    #         array[index] = 1
+    #     z_to_k_mer_in_binary_representative[key] = array
+
     config = {
         'mode': 'prod',
         # 'mode': 'test',
@@ -134,11 +144,13 @@ def build_config(
     if config['mode'] == 'prod':
         config['barcode_len'] = 12  # in ACGT
         config['barcode_rs_len'] = 4  # in ACGT
-        config['payload_len'] = 6  # in Z
+        config['payload_len'] = 4  # in Z
         config['payload_rs_len'] = 2  # in Z
         config['oligos_per_block_len'] = wide_n_k[subset_size]['block_len']
         config['oligos_per_block_rs_len'] = wide_n_k[subset_size]['block_rs_len']
         config['number_of_sampled_oligos_from_file'] = number_of_sampled_oligos_from_file * (wide_n_k[subset_size]['block_len'] + (wide_n_k[subset_size]['block_rs_len']))
+        config['vt_syndrome_n'] = 8
+        config['vt_syndrome_k'] = subset_size
     elif config['mode'] == 'test':
         config['barcode_len'] = 12  # in ACGT
         config['barcode_rs_len'] = 4  # in ACGT
@@ -154,7 +166,10 @@ def build_config(
     config['barcode_coder'] = RSBarcodeAdapter(bits_per_z=bits_per_z, barcode_len=config['barcode_len'],
                                                barcode_rs_len=config['barcode_rs_len'])
     config['payload_coder'] = RSPayloadAdapter(bits_per_z=bits_per_z, payload_len=config['payload_len'],
-                                               payload_rs_len=config['payload_rs_len'])
+                                               payload_rs_len=config['payload_rs_len'],
+                                               vt_syndrome_n=config['vt_syndrome_n'],
+                                               vt_syndrome_k=config['vt_syndrome_k'],
+                                               k_mer_representative_to_z=config['algorithm_config']['k_mer_representative_to_z'])
     config['wide_coder'] = RSWideAdapter(bits_per_z=bits_per_z, payload_len=config['oligos_per_block_len'],
                                          payload_rs_len=config['oligos_per_block_rs_len'])
 

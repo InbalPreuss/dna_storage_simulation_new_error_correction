@@ -38,7 +38,9 @@ def main(config):
                           payload_coder=config['payload_coder'],
                           wide_coder=config['wide_coder'],
                           results_file=config['encoder_results_file'],
-                          results_file_without_rs_wide=config['encoder_results_file_without_rs_wide'])
+                          results_file_without_rs_wide=config['encoder_results_file_without_rs_wide'],
+                          z_to_binary=config['algorithm_config']['z_to_binary'],
+                          z_to_k_mer_in_binary_representative=config['algorithm_config']['z_to_k_mer_representative'])
         number_of_blocks = encoder.run()
 
     # Synthesize
