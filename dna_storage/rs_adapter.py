@@ -4,7 +4,7 @@ from typing import Dict
 import numpy as np
 from unireedsolomon.unireedsolomon import rs, RSCodecError
 from unireedsolomon.unireedsolomon import ff
-from VTSyndrom import VTSyndrom
+from VTSyndrome import VTSyndrome
 
 
 class RSBarcodeAdapter:
@@ -92,15 +92,20 @@ class RSPayloadAdapter:
     def __init__(self, bits_per_z, payload_len, payload_rs_len, vt_syndrome_n:int, vt_syndrome_k:int, k_mer_representative_to_z: Dict):
         ###########################
         self.vt_syndrome = None
+        # VT syndrome parameters for alphabet size 7
         bits_per_z = 3
-        payload_len = 4
-        payload_rs_len = 3
+        payload_len = 5
+        payload_rs_len = 2
+        # # VT syndrome parameters for alphabet size 16
+        # bits_per_z = 4
+        # payload_len = 4
+        # payload_rs_len = 4
         ###########################
         self.bits_per_z = bits_per_z
         self.payload_len = payload_len
         self.vt_syndrome_n = vt_syndrome_n
         self.vt_syndrome_k = vt_syndrome_k
-        self.init_vt_syndrome(n=self.vt_syndrome_n, k=self.vt_syndrome_k)
+        self.vt_syndrome = VTSyndrome(n=vt_syndrome_n, k=vt_syndrome_k)
         self.k_mer_representative_to_z = k_mer_representative_to_z
         # alphabet = ['Z{}'.format(i) for i in range(1, 2 ** bits_per_z + 1)]
         alphabet = ['Z{}'.format(i) for i in range(1, 2 ** 6 + 1)] #TODO: change this to 2**bits_per_z with bits_per_z = 6
@@ -122,7 +127,8 @@ class RSPayloadAdapter:
         xs_vector_array = []
         binary_array = [[int(char) for char in string] for string in binary_list]
         for item in binary_array:
-            syn, ind, xs_vector = self.vt_syndrome.one_letter(self.table, item)
+            syn, xs_vector = self.vt_syndrome.get_syn_from_input_bits(
+                bits_array=item), self.vt_syndrome.get_comb_codeword(bit_array=item)
             syndrome_array.append(syn)
             xs_vector_array.append(xs_vector)
         converted_from_binary_to_x = []
@@ -155,10 +161,6 @@ class RSPayloadAdapter:
                 return payload_encoded[0:self.payload_len]
             payload = [self._int_to_payload[i] for i in payload_as_gf]
             return payload
-
-    def init_vt_syndrome(self, n, k):
-        self.vt_syndrome = VTSyndrom(n=n, k=k)
-        self.table = self.vt_syndrome.create_table()
 
 
 class RSWideAdapter:

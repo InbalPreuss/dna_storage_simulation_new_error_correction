@@ -15,13 +15,16 @@ class BCHPayloadAdapter:
         self.bits_per_z = bits_per_z
         self.payload_len = payload_len
         # self.n = payload_len + payload_rs_len
-        self.n = (payload_len + payload_rs_len) * 3
+        self.n = (payload_len + payload_rs_len)
+        # self.n = (payload_len + payload_rs_len) * 3
         # self.n = 15
         # self.k = payload_len
-        self.k = payload_len * 3
+        # self.k = payload_len * 3
+        self.k = payload_len
         self.alphabet = list(range((payload_len + payload_rs_len)))  # Alphabet is {0,1,2,3,4,5,6,7}
         # self.c_exp = bits_per_z
-        self.c_exp = math.ceil(math.log2(self.n + 1))
+        # self.c_exp = math.ceil(math.log2(self.n + 1))
+        self.c_exp = math.ceil(math.log2(self.n))
         self.generator = 3
         self.t = (self.n - self.k) // 2
 
@@ -162,19 +165,19 @@ BCHWideAdapter = BCHPayloadAdapter
 
 
 if __name__ == '__main__':
-    data = '1234'
-
-    bits_per_z = 6
-    payload_len = 4
-    payload_rs_len = 4
-    bch_adapter = BCHWideAdapter(bits_per_z, payload_len, payload_rs_len)
-    payload_encoded = bch_adapter.encode(payload=data)
-    data_ecc = bytearray(payload_encoded)
-    # insert error to data_ecc
-    data_ecc[0] ^= 0x01
-    data = data_ecc[:-bch_adapter.payload_coder.ecc_bytes]
-    ecc_dec = data_ecc[-bch_adapter.payload_coder.ecc_bytes:]
-    nerr = bch_adapter.payload_coder.decode(data, ecc_dec)
+    # data = '1234'
+    #
+    # bits_per_z = 6
+    # payload_len = 4
+    # payload_rs_len = 4
+    # bch_adapter = BCHWideAdapter(bits_per_z, payload_len, payload_rs_len)
+    # payload_encoded = bch_adapter.encode(payload=data)
+    # data_ecc = bytearray(payload_encoded)
+    # # insert error to data_ecc
+    # data_ecc[0] ^= 0x01
+    # data = data_ecc[:-bch_adapter.payload_coder.ecc_bytes]
+    # ecc_dec = data_ecc[-bch_adapter.payload_coder.ecc_bytes:]
+    # nerr = bch_adapter.payload_coder.decode(data, ecc_dec)
 
 
     n = 6
