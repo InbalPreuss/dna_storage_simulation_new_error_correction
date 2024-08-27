@@ -4,8 +4,8 @@ from typing import Dict
 import numpy as np
 from unireedsolomon.unireedsolomon import rs, RSCodecError
 from unireedsolomon.unireedsolomon import ff
-from VTSyndrome import VTSyndrome
-
+from dna_storage.vt_syndrome import VTSyndrome
+from dna_storage import utils as uts
 
 class RSBarcodeAdapter:
     def __init__(self, bits_per_z, barcode_len, barcode_rs_len):
@@ -89,30 +89,36 @@ class RSBarcodeAdapter:
 
 
 class RSPayloadAdapter:
-    def __init__(self, bits_per_z, payload_len, payload_rs_len, vt_syndrome_n:int, vt_syndrome_k:int, k_mer_representative_to_z: Dict):
+    def __init__(self, bits_per_z, payload_len, payload_redundancy_len, payload_rs_len, vt_syndrome_n:int, vt_syndrome_k:int, k_mer_representative_to_z: Dict, z_to_k_mer_representative: Dict, binary_to_z: Dict, binary_to_k_mer_representation: Dict, bits_per_syndrome: int):
         ###########################
         self.vt_syndrome = None
-        # VT syndrome parameters for alphabet size 7
-        bits_per_z = 3
-        payload_len = 5
-        payload_rs_len = 2
+        # # VT syndrome parameters for alphabet size 7
+        # self.bits_per_syndrome = 3
+        # payload_len = 5
+        # payload_rs_len = 2
         # # VT syndrome parameters for alphabet size 16
         # bits_per_z = 4
         # payload_len = 4
         # payload_rs_len = 4
         ###########################
+        self.bits_per_syndrome = bits_per_syndrome
         self.bits_per_z = bits_per_z
-        self.payload_len = payload_len
+        self.payload_len = payload_len - payload_redundancy_len
+        self.payload_rs_len = payload_rs_len
+        self.payload_redundancy_len = payload_redundancy_len
         self.vt_syndrome_n = vt_syndrome_n
         self.vt_syndrome_k = vt_syndrome_k
-        self.vt_syndrome = VTSyndrome(n=vt_syndrome_n, k=vt_syndrome_k)
+        self.vt_syndrome = VTSyndrome(n=vt_syndrome_n, k=vt_syndrome_k, bits_per_syndrome=bits_per_syndrome)
         self.k_mer_representative_to_z = k_mer_representative_to_z
-        # alphabet = ['Z{}'.format(i) for i in range(1, 2 ** bits_per_z + 1)]
-        alphabet = ['Z{}'.format(i) for i in range(1, 2 ** 6 + 1)] #TODO: change this to 2**bits_per_z with bits_per_z = 6
-        n = payload_len + payload_rs_len
-        k = payload_len
+        self.binary_to_z = binary_to_z
+        self.z_to_k_mer_representative = z_to_k_mer_representative
+        self.binary_to_k_mer_representation = binary_to_k_mer_representation
+        alphabet = ['Z{}'.format(i) for i in range(1, 2 ** bits_per_z + 1)]
+        # alphabet = ['Z{}'.format(i) for i in range(1, 2 ** 6 + 1)] #TODO: change this to 2**bits_per_z with bits_per_z = 6
+        n = self.payload_len + payload_rs_len
+        k = self.payload_len
         # alphabet = list(range(self.vt_syndrome_n))
-        c_exp = bits_per_z
+        c_exp = bits_per_syndrome
         generator = 2
         prim = ff.find_prime_polynomials(generator=generator, c_exp=c_exp, fast_primes=False, single=True)
 
@@ -125,27 +131,41 @@ class RSPayloadAdapter:
         ff.set_globals(*self.ff_globals)
         syndrome_array = []
         xs_vector_array = []
-        binary_array = [[int(char) for char in string] for string in binary_list]
-        for item in binary_array:
+        xs_array = []
+        binary_array = [tuple(int(char) for char in string) for string in binary_list]
+        for item in binary_array[:self.payload_len]:
             syn, xs_vector = self.vt_syndrome.get_syn_from_input_bits(
-                bits_array=item), self.vt_syndrome.get_comb_codeword(bit_array=item)
+                bits_tuple=item), self.vt_syndrome.encode(message=item)
             syndrome_array.append(syn)
             xs_vector_array.append(xs_vector)
+            xs_array.append(self.binary_to_k_mer_representation[item])
         converted_from_binary_to_x = []
 
         payload_encoded_as_polynomial = self._payload_coder.encode_fast(syndrome_array, return_string=False)
 
-        for binary_array in xs_vector_array:
-            xi_values = [f'X{i + 1}' for i, bit in enumerate(binary_array) if bit == 1]
-            xi_values = tuple(xi_values)
-            values = [f'{i + 1}' for i, bit in enumerate(binary_array) if bit == 1]
-            converted_from_binary_to_x.append(xi_values)
-        # payload_as_int = [self._payload_to_int[z] for z in payload]
-        # payload_encoded_as_polynomial = self._payload_coder.encode_fast(payload_as_int, return_string=False)
-        z_array = [self._payload_to_int[self.k_mer_representative_to_z[values]] for values in converted_from_binary_to_x]
-        payload_encoded_as_polynomial = self._payload_coder.encode_fast(z_array, return_string=False)
-        payload_encoded = [f'X{i}' for i in payload_encoded_as_polynomial]
-        return payload_encoded
+        binary_list_info_to_concat_with_redundancy = binary_list[-self.payload_redundancy_len:]
+        payload_encoded = payload[:self.payload_len]
+        for binary_info in binary_list_info_to_concat_with_redundancy:
+            for i,decimal_number in zip(range(0, len(binary_info), self.bits_per_syndrome),payload_encoded_as_polynomial[-self.payload_rs_len:]):
+                chunk = binary_info[i:i + self.bits_per_syndrome]
+                binary_array = uts.decimal_to_bits(decimal_number=decimal_number, amount_bits=self.bits_per_syndrome)
+                binary_with_info_n_redundancy = uts.convert_binary_string_to_tuple(chunk + binary_array)
+                xs = self.binary_to_k_mer_representation[binary_with_info_n_redundancy]
+                z_vector = self.binary_to_z[binary_with_info_n_redundancy]
+                payload_encoded.append(z_vector)
+                xs_array.append(xs)
+
+        # for binary_array in xs_vector_array:
+        #     xi_values = [f'X{i + 1}' for i, bit in enumerate(binary_array) if bit == 1]
+        #     xi_values = tuple(xi_values)
+        #     values = [f'{i + 1}' for i, bit in enumerate(binary_array) if bit == 1]
+        #     converted_from_binary_to_x.append(xi_values)
+        # # payload_as_int = [self._payload_to_int[z] for z in payload]
+        # # payload_encoded_as_polynomial = self._payload_coder.encode_fast(payload_as_int, return_string=False)
+        # z_array = [self._payload_to_int[self.k_mer_representative_to_z[values]] for values in converted_from_binary_to_x]
+        # payload_encoded_as_polynomial = self._payload_coder.encode_fast(z_array, return_string=False)
+        # payload_encoded = [f'X{i}' for i in payload_encoded_as_polynomial]
+        return [str(list(xs)) for xs in xs_array]
 
     def decode(self, payload_encoded):
         ff.set_globals(*self.ff_globals)

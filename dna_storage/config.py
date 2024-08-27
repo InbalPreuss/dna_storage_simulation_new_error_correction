@@ -3,6 +3,7 @@ import pathlib
 from typing import Union
 
 from dna_storage.rs_adapter import RSBarcodeAdapter, RSPayloadAdapter, RSWideAdapter
+from dna_storage.vt_syndrome_utils import VTSyndromeUtils as vtsu
 
 PathLike = Union[str, pathlib.Path]
 
@@ -51,35 +52,34 @@ def build_config(
 
     subset_size = 4
     bits_per_z = 6
+    vt_syndrome_n = 8
+    vt_syndrome_k = 4
+    bits_per_syndrome = 3
+
 
     shrink_dict_size = len(shrink_dict_3_mer)
 
-    k_mer_representative = itertools.combinations(['X' + str(i) for i in range(1, shrink_dict_size + 1)], subset_size)
-    x_combinations = [set(k) for k in k_mer_representative]
-    all_binary_combinations = itertools.product([0, 1], repeat=bits_per_z)
-    z = itertools.combinations(['Z' + str(i) for i in range(1, len(x_combinations) + 1)], 1)
-    z = [i[0] for i in z]
-    z_to_binary = dict(zip(z, all_binary_combinations))
-    all_binary_combinations = itertools.product([0, 1], repeat=bits_per_z)
-    binary_to_z = dict(zip(all_binary_combinations, z))
+    # k_mer_representative = itertools.combinations(['X' + str(i) for i in range(1, shrink_dict_size + 1)], subset_size)
+    # x_combinations = [set(k) for k in k_mer_representative]
+    # all_binary_combinations = itertools.product([0, 1], repeat=bits_per_z)
+    # z = itertools.combinations(['Z' + str(i) for i in range(1, len(x_combinations) + 1)], 1)
+    # z = [i[0] for i in z]
+    # z_to_binary = dict(zip(z, all_binary_combinations))
+    # all_binary_combinations = itertools.product([0, 1], repeat=bits_per_z)
+    # binary_to_z = dict(zip(all_binary_combinations, z))
+    #
+    # z = z[:2**bits_per_z]
+    # k_mer_representative = itertools.combinations(['X' + str(i) for i in range(1, shrink_dict_size + 1)], subset_size)
+    # k_mer_representative = list(k_mer_representative)[:2**bits_per_z]
+    # k_mer_representative_to_z = dict(zip(k_mer_representative, z))
+    # z_to_k_mer_representative = dict(zip(z, k_mer_representative))
 
-    z = z[:2**bits_per_z]
-    k_mer_representative = itertools.combinations(['X' + str(i) for i in range(1, shrink_dict_size + 1)], subset_size)
-    k_mer_representative = list(k_mer_representative)[:2**bits_per_z]
-    k_mer_representative_to_z = dict(zip(k_mer_representative, z))
-    z_to_k_mer_representative = dict(zip(z, k_mer_representative))
+    vtsu_instance = vtsu(n=vt_syndrome_n, k=vt_syndrome_k, bits_per_syndrome=bits_per_syndrome)
+    z_to_k_mer_representative, k_mer_representative_to_z, z_to_binary, binary_to_z, binary_to_k_mer_representation = (
+        vtsu_instance.generate_z_list_from_table())
+
 
     k_mer_to_dna = {v: k for k, v in shrink_dict_3_mer.items()}
-
-    # z_to_k_mer_in_binary_representative = {}
-    # for key, values in z_to_k_mer_representative.items():
-    #     # Initialize an array of zeros with the specified size
-    #     array = [0] * shrink_dict_size
-    #     # Iterate over the Xi values and set the corresponding index to 1
-    #     for value in values:
-    #         index = int(value[1:]) - 1  # Extract the integer part of Xi and adjust for zero-based index
-    #         array[index] = 1
-    #     z_to_k_mer_in_binary_representative[key] = array
 
     config = {
         'mode': 'prod',
@@ -126,6 +126,7 @@ def build_config(
                              'z_to_k_mer_representative': z_to_k_mer_representative,
                              'z_to_binary': z_to_binary,
                              'binary_to_z': binary_to_z,
+                             'binary_to_k_mer_representation': binary_to_k_mer_representation,
                              'k_mer_to_dna': k_mer_to_dna},
         'synthesis': {'number_of_oligos_per_barcode': number_of_oligos_per_barcode,
                       'letter_substitution_error_ratio': letter_substitution_error_ratio,
@@ -144,13 +145,15 @@ def build_config(
     if config['mode'] == 'prod':
         config['barcode_len'] = 12  # in ACGT
         config['barcode_rs_len'] = 4  # in ACGT
-        config['payload_len'] = 4  # in Z
+        config['payload_redundancy_len'] = 1  # in Z
+        config['payload_len'] = 6  # in Z
         config['payload_rs_len'] = 2  # in Z
         config['oligos_per_block_len'] = wide_n_k[subset_size]['block_len']
         config['oligos_per_block_rs_len'] = wide_n_k[subset_size]['block_rs_len']
         config['number_of_sampled_oligos_from_file'] = number_of_sampled_oligos_from_file * (wide_n_k[subset_size]['block_len'] + (wide_n_k[subset_size]['block_rs_len']))
         config['vt_syndrome_n'] = 8
         config['vt_syndrome_k'] = subset_size
+        config['bits_per_syndrome'] = 3
     elif config['mode'] == 'test':
         config['barcode_len'] = 12  # in ACGT
         config['barcode_rs_len'] = 4  # in ACGT
@@ -167,10 +170,16 @@ def build_config(
                                                barcode_rs_len=config['barcode_rs_len'])
     config['payload_coder'] = RSPayloadAdapter(bits_per_z=bits_per_z, payload_len=config['payload_len'],
                                                payload_rs_len=config['payload_rs_len'],
+                                               payload_redundancy_len=config['payload_redundancy_len'],
                                                vt_syndrome_n=config['vt_syndrome_n'],
                                                vt_syndrome_k=config['vt_syndrome_k'],
-                                               k_mer_representative_to_z=config['algorithm_config']['k_mer_representative_to_z'])
+                                               k_mer_representative_to_z=config['algorithm_config']['k_mer_representative_to_z'],
+                                               binary_to_z=config['algorithm_config']['binary_to_z'],
+                                               z_to_k_mer_representative=config['algorithm_config']['z_to_k_mer_representative'],
+                                               binary_to_k_mer_representation=config['algorithm_config']['binary_to_k_mer_representation'],
+                                               bits_per_syndrome=config['bits_per_syndrome'])
     config['wide_coder'] = RSWideAdapter(bits_per_z=bits_per_z, payload_len=config['oligos_per_block_len'],
                                          payload_rs_len=config['oligos_per_block_rs_len'])
+    # vt_syndrome_coder = VTSyndrome(n=8, k=4, bits_per_syndrome=3)
 
     return config

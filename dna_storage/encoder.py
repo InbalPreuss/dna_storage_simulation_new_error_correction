@@ -65,6 +65,7 @@ class Encoder:
                 line = line.strip('\n')
                 z_list = []
                 binary_list = []
+                line = '011101000111100101011000010110100111' #TODO: delete this - for tests only!!!!!
                 for binary_to_transform in wrap(line, self.bits_per_z):
                     z = self.binary_to_z(binary=binary_to_transform)
                     z_list.append(z)
