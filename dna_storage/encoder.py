@@ -4,6 +4,7 @@ from pathlib import Path
 
 from dna_storage.rs_adapter import RSBarcodeAdapter, RSPayloadAdapter, RSWideAdapter
 from dna_storage import utils
+from dna_storage.vt_syndrome import VTSyndrome
 
 
 #################################################################
@@ -27,8 +28,9 @@ class Encoder:
                  oligos_per_block_len: int,
                  oligos_per_block_rs_len: int,
                  barcode_coder: RSBarcodeAdapter,
-                 payload_coder: RSPayloadAdapter,
+                 payload_coder_rs: RSPayloadAdapter,
                  wide_coder: RSWideAdapter,
+                 payload_coder_vt_syndrome: VTSyndrome,
                  results_file: Union[Path, str],
                  results_file_without_rs_wide: Union[Path, str],
                  z_to_binary: Dict,
@@ -52,8 +54,9 @@ class Encoder:
         open(self.results_file, 'w').close()
         self.barcode_generator = utils.dna_sequence_generator(sequence_len=self.barcode_len)
         self.barcode_coder = barcode_coder
-        self.payload_coder = payload_coder
+        self.payload_coder_rs = payload_coder_rs
         self.wide_coder = wide_coder
+        self.payload_coder_vt_syndrome = payload_coder_vt_syndrome
         self.z_to_binary = z_to_binary
         self.z_to_k_mer_in_binary_representative = z_to_k_mer_in_binary_representative
 
@@ -112,10 +115,13 @@ class Encoder:
             payload = [c for c in payload]
         if payload_or_wide == 'payload':
             ###########################we want to do reed solomon on the 6 bits?
-            for sigma in payload:
-                print(bin(int(sigma[1:])-1).zfill(6))
+            # for sigma in payload:
+            #     print(bin(int(sigma[1:])-1).zfill(6))
             ###########################
-            payload_encoded = self.payload_coder.encode(payload=payload, binary_list=binary_list)
+            payload_encoded_after_vt_syndrome, xs_array = self.payload_coder_vt_syndrome.encode(binary_list=binary_list)
+            payload_encoded = self.payload_coder_rs.encode(payload=payload,
+                                                           payload_encoded_after_vt_syndrome=payload_encoded_after_vt_syndrome,
+                                                           binary_list=binary_list, xs_array=xs_array)
         else:
             payload_encoded = self.wide_coder.encode(payload=payload)
 

@@ -108,7 +108,11 @@ class RSPayloadAdapter:
         self.payload_redundancy_len = payload_redundancy_len
         self.vt_syndrome_n = vt_syndrome_n
         self.vt_syndrome_k = vt_syndrome_k
-        self.vt_syndrome = VTSyndrome(n=vt_syndrome_n, k=vt_syndrome_k, bits_per_syndrome=bits_per_syndrome)
+        self.vt_syndrome = VTSyndrome(n=vt_syndrome_n, k=vt_syndrome_k,
+                                      bits_per_syndrome=bits_per_syndrome,
+                                      payload_len=payload_len,
+                                      payload_redundancy_len=payload_redundancy_len,
+                                      binary_to_k_mer_representation=binary_to_k_mer_representation)
         self.k_mer_representative_to_z = k_mer_representative_to_z
         self.binary_to_z = binary_to_z
         self.z_to_k_mer_representative = z_to_k_mer_representative
@@ -122,26 +126,26 @@ class RSPayloadAdapter:
         generator = 2
         prim = ff.find_prime_polynomials(generator=generator, c_exp=c_exp, fast_primes=False, single=True)
 
-        self._payload_coder = rs.RSCoder(n=n, k=k, generator=generator, prim=prim, c_exp=c_exp)
+        self._payload_coder_rs = rs.RSCoder(n=n, k=k, generator=generator, prim=prim, c_exp=c_exp)
         self.ff_globals = ff.get_globals()
         self._payload_to_int = {''.join(vv): i for i, vv in enumerate(alphabet)}
         self._int_to_payload = {i: vv for vv, i in self._payload_to_int.items()}
 
-    def encode(self, payload, binary_list):
+    def encode(self, payload, payload_encoded_after_vt_syndrome, binary_list, xs_array):
         ff.set_globals(*self.ff_globals)
-        syndrome_array = []
-        xs_vector_array = []
-        xs_array = []
-        binary_array = [tuple(int(char) for char in string) for string in binary_list]
-        for item in binary_array[:self.payload_len]:
-            syn, xs_vector = self.vt_syndrome.get_syn_from_input_bits(
-                bits_tuple=item), self.vt_syndrome.encode(message=item)
-            syndrome_array.append(syn)
-            xs_vector_array.append(xs_vector)
-            xs_array.append(self.binary_to_k_mer_representation[item])
+        # syndrome_array = []
+        # xs_vector_array = []
+        # xs_array = []
+        # binary_array = [tuple(int(char) for char in string) for string in binary_list]
+        # for item in binary_array[:self.payload_len]:
+        #     syn, xs_vector = self.vt_syndrome.get_syn_from_input_bits(
+        #         bits_tuple=item), self.vt_syndrome.encode_message(message=item)
+        #     syndrome_array.append(syn)
+        #     xs_vector_array.append(xs_vector)
+        #     xs_array.append(self.binary_to_k_mer_representation[item])
         converted_from_binary_to_x = []
 
-        payload_encoded_as_polynomial = self._payload_coder.encode_fast(syndrome_array, return_string=False)
+        payload_encoded_as_polynomial = self._payload_coder_rs.encode_fast(payload_encoded_after_vt_syndrome, return_string=False)
 
         binary_list_info_to_concat_with_redundancy = binary_list[-self.payload_redundancy_len:]
         payload_encoded = payload[:self.payload_len]
@@ -149,38 +153,28 @@ class RSPayloadAdapter:
             for i,decimal_number in zip(range(0, len(binary_info), self.bits_per_syndrome),payload_encoded_as_polynomial[-self.payload_rs_len:]):
                 chunk = binary_info[i:i + self.bits_per_syndrome]
                 binary_array = uts.decimal_to_bits(decimal_number=decimal_number, amount_bits=self.bits_per_syndrome)
-                binary_with_info_n_redundancy = uts.convert_binary_string_to_tuple(chunk + binary_array)
+                binary_with_info_n_redundancy = uts.convert_binary_string_to_tuple(binary_array + chunk)
                 xs = self.binary_to_k_mer_representation[binary_with_info_n_redundancy]
                 z_vector = self.binary_to_z[binary_with_info_n_redundancy]
                 payload_encoded.append(z_vector)
                 xs_array.append(xs)
+        return payload_encoded
 
-        # for binary_array in xs_vector_array:
-        #     xi_values = [f'X{i + 1}' for i, bit in enumerate(binary_array) if bit == 1]
-        #     xi_values = tuple(xi_values)
-        #     values = [f'{i + 1}' for i, bit in enumerate(binary_array) if bit == 1]
-        #     converted_from_binary_to_x.append(xi_values)
-        # # payload_as_int = [self._payload_to_int[z] for z in payload]
-        # # payload_encoded_as_polynomial = self._payload_coder.encode_fast(payload_as_int, return_string=False)
-        # z_array = [self._payload_to_int[self.k_mer_representative_to_z[values]] for values in converted_from_binary_to_x]
-        # payload_encoded_as_polynomial = self._payload_coder.encode_fast(z_array, return_string=False)
-        # payload_encoded = [f'X{i}' for i in payload_encoded_as_polynomial]
-        return [str(list(xs)) for xs in xs_array]
-
-    def decode(self, payload_encoded):
+    def decode(self, payload_encoded: list, erasures_pos: list):
         ff.set_globals(*self.ff_globals)
         # payload_as_int = [self._payload_to_int[z] for z in payload_encoded]
         # if self._payload_coder.check_fast(payload_as_int):
-        if self._payload_coder.check_fast(payload_encoded):
+        if self._payload_coder_rs.check_fast(payload_encoded):
             return payload_encoded[0:self.payload_len]
         else:
             try:
                 # payload_as_gf, rs_as_gf = self._payload_coder.decode(payload_as_int, nostrip=True, return_string=False)
-                payload_as_gf, rs_as_gf = self._payload_coder.decode(payload, nostrip=True, return_string=False)
+                payload_as_gf, rs_as_gf = self._payload_coder_rs.decode(payload_encoded, erasures_pos=erasures_pos, nostrip=True, return_string=False)
             except RSCodecError:
                 return payload_encoded[0:self.payload_len]
-            payload = [self._int_to_payload[i] for i in payload_as_gf]
-            return payload
+            # payload = [self._int_to_payload[i] for i in payload_as_gf]
+            # return payload
+            return payload_as_gf + rs_as_gf
 
 
 class RSWideAdapter:

@@ -1,9 +1,10 @@
 import itertools
 from collections import Counter
 import re
-from typing import Union, Dict, List
+from typing import Union, Dict, List, Tuple, Any
 from pathlib import Path
 
+from dna_storage.vt_syndrome import VTSyndrome
 from unireedsolomon.unireedsolomon import RSCodecError
 
 from dna_storage.rs_adapter import RSBarcodeAdapter, RSPayloadAdapter, RSWideAdapter
@@ -27,13 +28,16 @@ class Decoder:
                  k_mer: int,
                  k_mer_representative_to_z: Dict,
                  z_to_binary: Dict,
+                 k_mer_representation_to_kmer_vector_representation: Dict,
+                 kmer_vector_representation_to_mer_representation: Dict,
                  subset_size: int,
                  oligos_per_block_len: int,
                  oligos_per_block_rs_len: int,
                  drop_if_not_exact_number_of_chunks: bool,
                  barcode_coder: RSBarcodeAdapter,
-                 payload_coder: RSPayloadAdapter,
+                 payload_coder_rs: RSPayloadAdapter,
                  wide_coder: RSWideAdapter,
+                 payload_coder_vt_syndrome: VTSyndrome,
                  results_file: Union[Path, str],
                  results_file_z_after_rs_wide: Union[Path, str],
                  results_file_z_before_rs_payload: Union[Path, str],
@@ -49,6 +53,8 @@ class Decoder:
         self.k_mer = k_mer
         self.k_mer_representative_to_z = k_mer_representative_to_z
         self.z_to_binary = z_to_binary
+        self.k_mer_representation_to_kmer_vector_representation = k_mer_representation_to_kmer_vector_representation
+        self.kmer_vector_representation_to_mer_representation = kmer_vector_representation_to_mer_representation
         self.subset_size = subset_size
         self.oligos_per_block_len = oligos_per_block_len
         self.oligos_per_block_rs_len = oligos_per_block_rs_len
@@ -63,8 +69,9 @@ class Decoder:
         open(self.results_file_z_after_rs_wide, 'w').close()
         self.barcode_generator = utils.dna_sequence_generator(sequence_len=self.barcode_len)
         self.barcode_coder = barcode_coder
-        self.payload_coder = payload_coder
+        self.payload_coder_rs = payload_coder_rs
         self.wide_coder = wide_coder
+        self.payload_coder_vt_syndrome = payload_coder_vt_syndrome
         self.payload_total_len_nuc = (payload_total_len * k_mer)
 
     def run(self):
@@ -86,9 +93,11 @@ class Decoder:
                         unique_payload_block_with_rs.append(dummy_payload)
                         unique_barcode_block_with_rs.append(next_barcode_should_be)
                     if len(payload_accumulation) > self.min_number_of_oligos_per_barcode:
-                        unique_payload = self.dna_to_unique_payload(payload_accumulation=payload_accumulation)
+                        unique_payload, payload_k_mer_rep = self.dna_to_unique_payload(
+                            payload_accumulation=payload_accumulation)
                         self.save_z_before_rs(barcode=barcode_prev, payload=unique_payload)
-                        unique_payload_corrected = self.error_correction_payload(payload=unique_payload)
+                        unique_payload_corrected = self.error_correction_payload(payload=unique_payload,
+                                                                                 payload_k_mer_rep=payload_k_mer_rep)
                         self.save_z_after_rs(barcode=barcode_prev, payload=unique_payload_corrected)
                         if len(unique_payload_corrected) > 0:
                             unique_payload_block_with_rs.append(unique_payload_corrected)
@@ -101,8 +110,10 @@ class Decoder:
                                 unique_barcode_block_with_rs[:total_oligos_per_block_with_rs_oligos],
                                 unique_payload_block_with_rs[:total_oligos_per_block_with_rs_oligos]
                             )
-                            unique_payload_block_with_rs = unique_payload_block_with_rs[total_oligos_per_block_with_rs_oligos:]
-                            unique_barcode_block_with_rs = unique_barcode_block_with_rs[total_oligos_per_block_with_rs_oligos:]
+                            unique_payload_block_with_rs = unique_payload_block_with_rs[
+                                                           total_oligos_per_block_with_rs_oligos:]
+                            unique_barcode_block_with_rs = unique_barcode_block_with_rs[
+                                                           total_oligos_per_block_with_rs_oligos:]
                     payload_accumulation = [payload]
                     barcode_prev = barcode
                 else:
@@ -127,11 +138,12 @@ class Decoder:
                     unique_payload_block_with_rs[:total_oligos_per_block_with_rs_oligos]
                 )
 
-    def dna_to_unique_payload(self, payload_accumulation: List[str]) -> List[str]:
+    def dna_to_unique_payload(self, payload_accumulation: List[str]) -> tuple[
+        list[str | Any], list[Any] | tuple[str, ...]]:
         shrunk_payload = self.shrink_payload(payload_accumulation=payload_accumulation)
         shrunk_payload_histogram = self.payload_histogram(payload=shrunk_payload)
-        unique_payload = self.payload_histogram_to_payload(payload_histogram=shrunk_payload_histogram)
-        return unique_payload
+        unique_payload, k_mer_rep = self.payload_histogram_to_payload(payload_histogram=shrunk_payload_histogram)
+        return unique_payload, k_mer_rep
 
     def save_block_to_binary(self, unique_barcode_block_with_rs: List[str],
                              unique_payload_block_with_rs: List[List[str]]) -> None:
@@ -183,7 +195,8 @@ class Decoder:
             k_mer_list = []
             oligo_valid = True
             if self.drop_if_not_exact_number_of_chunks:
-                if not self.payload_total_len_nuc - (self.k_mer - 1) <= len(payload) <= self.payload_total_len_nuc + (self.k_mer - 1):
+                if not self.payload_total_len_nuc - (self.k_mer - 1) <= len(payload) <= self.payload_total_len_nuc + (
+                        self.k_mer - 1):
                     continue
             else:
                 payload = payload.ljust(self.payload_total_len_nuc, 'R')[:self.payload_total_len_nuc]
@@ -239,14 +252,106 @@ class Decoder:
             col = [letter[col_idx] for letter in payload]
             letter_counts = Counter(col)
             hist.append(letter_counts)
+
+        # '''No Errors'''
+        # hist = [Counter({'X7': 277, 'X6': 246, 'X8': 239, 'X2': 238}),
+        #         Counter({'X4': 258, 'X5': 256, 'X3': 255, 'X8': 231}),
+        #         Counter({'X2': 261, 'X7': 254, 'X4': 244, 'X3': 241}),
+        #         Counter({'X8': 261, 'X2': 255, 'X4': 244, 'X1': 240}),
+        #         Counter({'X2': 264, 'X5': 256, 'X7': 249, 'X8': 231}),
+        #         Counter({'X4': 278, 'X5': 245, 'X6': 242, 'X1': 235}),
+        #         Counter({'X7': 276, 'X3': 262, 'X8': 238, 'X6': 224})]
+        # print(f'0 Erasure error={hist}')
+
+
+        # '''1 Erasure error'''
+        # hist = [Counter({'X7': 277, 'X6': 246, 'X8': 239}),
+        #         Counter({'X4': 258, 'X5': 256, 'X3': 255, 'X8': 231}),
+        #         Counter({'X2': 261, 'X7': 254, 'X4': 244, 'X3': 241}),
+        #         Counter({'X8': 261, 'X2': 255, 'X4': 244, 'X1': 240}),
+        #         Counter({'X2': 264, 'X5': 256, 'X7': 249, 'X8': 231}),
+        #         Counter({'X4': 278, 'X5': 245, 'X6': 242, 'X1': 235}),
+        #         Counter({'X7': 276, 'X3': 262, 'X8': 238, 'X6': 224})]# TODO: delete this - for tests only!!!!!
+        # print(f'1 Erasure error={hist}')
+
+        # '''2 Erasure error'''
+        # hist = [Counter({'X7': 277, 'X6': 246, 'X8': 239}),
+        #         Counter({'X4': 258, 'X5': 256, 'X3': 255}),
+        #         Counter({'X2': 261, 'X7': 254, 'X4': 244, 'X3': 241}),
+        #         Counter({'X8': 261, 'X2': 255, 'X4': 244, 'X1': 240}),
+        #         Counter({'X2': 264, 'X5': 256, 'X7': 249, 'X8': 231}),
+        #         Counter({'X4': 278, 'X5': 245, 'X6': 242, 'X1': 235}),
+        #         Counter({'X7': 276, 'X3': 262, 'X8': 238, 'X6': 224})]  # TODO: delete this - for tests only!!!!!
+        # print(f'2 Erasure error={hist}')
+
+        # '''3 Erasure error'''
+        # hist = [Counter({'X7': 277, 'X6': 246, 'X8': 239}),
+        #         Counter({'X4': 258, 'X5': 256, 'X3': 255}),
+        #         Counter({'X2': 261, 'X7': 254, 'X4': 244}),
+        #         Counter({'X8': 261, 'X2': 255, 'X4': 244, 'X1': 240}),
+        #         Counter({'X2': 264, 'X5': 256, 'X7': 249, 'X8': 231}),
+        #         Counter({'X4': 278, 'X5': 245, 'X6': 242, 'X1': 235}),
+        #         Counter({'X7': 276, 'X3': 262, 'X8': 238, 'X6': 224})]  # TODO: delete this - for tests only!!!!!
+        # print(f'3 Erasure error={hist}')
+        #
+
+        '''2 Erasure of X in the same Z error'''
+        hist = [Counter({'X7': 277, 'X6': 246}),
+                Counter({'X4': 258, 'X5': 256, 'X3': 255, 'X8': 231}),
+                Counter({'X2': 261, 'X7': 254, 'X4': 244, 'X3': 241}),
+                Counter({'X8': 261, 'X2': 255, 'X4': 244, 'X1': 240}),
+                Counter({'X2': 264, 'X5': 256, 'X7': 249, 'X8': 231}),
+                Counter({'X4': 278, 'X5': 245, 'X6': 242, 'X1': 235}),
+                Counter({'X7': 276, 'X3': 262, 'X8': 238, 'X6': 224})]# TODO: delete this - for tests only!!!!!
+        print(f'2 Erasure of X in the same Z error={hist}')
+
+
         return hist
 
-    def error_correction_payload(self, payload: Union[str, List[str]], payload_or_wide: str = 'payload') -> List[str]:
+    def error_correction_payload(self, payload: Union[str, List[str]], payload_k_mer_rep: List[str],
+                                 payload_or_wide: str = 'payload') -> List[str]:
         if isinstance(payload, str):
             payload = [c for c in payload]
 
         if payload_or_wide == 'payload':
-            payload_decoded = self.payload_coder.decode(payload_encoded=payload)
+            codewords = []
+            codewords_syndrome = []
+            print(f'payload_k_mer_rep=\n{payload_k_mer_rep}')
+
+            # Set the k_mer rep corresponding indices to 1
+            for k_mer_rep in payload_k_mer_rep:
+                try:
+                    codeword_vector = self.k_mer_representation_to_kmer_vector_representation[k_mer_rep]
+                except:
+                    # if we have XErasure then convert the k_mer to a vector like this,
+                    # or if it doesn't have any representation in syndrome table
+                    codeword_vector = [0] * self.payload_coder_vt_syndrome.n
+                    filtered_k_mer_rep = tuple(x for x in k_mer_rep if 'XErasure' not in x)
+                    for x in filtered_k_mer_rep:
+                        index = int(x[1:]) - 1  # Convert 'X' index to zero-based index
+                        codeword_vector[index] = 1
+
+                codewords.append(tuple(codeword_vector))
+                codewords_syndrome.append(self.payload_coder_vt_syndrome.codeword_to_syndrome(codeword=codewords[-1]))
+
+            print(f'codewords=\n{codewords}')
+            print(f'codewords_syndrome=\n{codewords_syndrome}')
+
+            # Find the indices where 'ZErasure' is located
+            erasures_positions = [index for index, value in enumerate(payload) if value == 'ZErasure']
+            print('erasures_positions=\n', erasures_positions)
+            syn_outputs_after_rs = self.payload_coder_rs.decode(payload_encoded=codewords_syndrome,
+                                                               erasures_pos=erasures_positions)
+            print('syn_outputs_after_rs=\n', syn_outputs_after_rs)
+            # syn_output_from_rs = self.payload_coder_vt_syndrome.codeword_to_syndrome(codeword=codeword)
+
+            decoded_codewords_vector = []
+            decoded_codewords = []
+            for codeword, syn_output_from_rs in zip(codewords, syn_outputs_after_rs):
+                decoded_codewords_vector.append(self.payload_coder_vt_syndrome.decode(codeword=codeword,
+                                                                                      syn_output_from_rs=syn_output_from_rs))
+                decoded_codewords.append(self.kmer_vector_representation_to_mer_representation[decoded_codewords_vector[-1]])
+            print(f'decoded_codewords=\n{decoded_codewords}')
         else:
             payload_decoded = self.wide_coder.decode(payload_encoded=payload)
 
@@ -265,30 +370,48 @@ class Decoder:
             barcode_decoded = ''.join(barcode_decoded)
         return barcode_decoded
 
-    def payload_histogram_to_payload(self, payload_histogram: List[Counter]) -> List[str]:
+    def payload_histogram_to_payload(self, payload_histogram: List[Counter]) -> tuple[
+        list[str | Any], list[Any] | tuple[str, ...]]:
         result_payload = []
+        k_mer_rep = []
         for counter in payload_histogram:
             del counter['Xdummy']
             reps = counter.most_common(self.subset_size)
             if len(reps) != self.subset_size:
+
+                # # Initialize a vector of zeros with the required length
+                # codeword_vector = [0] * self.payload_coder_vt_syndrome.n
+                #
+                # # Set the corresponding indices to 1
+                # for item in reps:
+                #     index = int(item[0][1:]) - 1  # Convert 'X' index to zero-based index
+                #     codeword_vector[index] = 1
+                #
+                # codeword = tuple(codeword_vector)
+                # syn_output_from_rs = self.payload_coder_vt_syndrome.codeword_to_syndrome(codeword=codeword)
+                # encoded_codeword_vt_syndrome = self.payload_coder_vt_syndrome.decode(codeword=codeword, syn_output_from_rs=syn_output_from_rs)
+
+                # Output the resulting vector
+
                 # BAD
                 # return [0]
                 # OK
                 # reps = [('X' + str(i), i) for i in range(1, self.subset_size + 1)]
                 # BEST
-                s = set(['X' + str(i) for i in range(1, self.subset_size + 1)])
+                s = set(['XErasure' + str(i) for i in range(1, self.subset_size + 1)])
+                # s = set(['XErasure'] * self.subset_size)
                 t = set([r[0] for r in reps])
-                diff = sorted(list(s-t))
+                diff = sorted(list(s - t))
                 for missing_rep_idx in range(self.subset_size - len(reps)):
                     reps.append((diff[missing_rep_idx], 1))
-            k_mer_rep = tuple(self.sorted_human([rep[0] for rep in reps]))
+            k_mer_rep.append(tuple(self.sorted_human([rep[0] for rep in reps])))
             try:
-                z = self.k_mer_representative_to_z[k_mer_rep]
+                z = self.k_mer_representative_to_z[k_mer_rep[-1]]
             except KeyError:
-                z = 'Z1'  # The X tuple is out of range
+                z = 'ZErasure'  # The X tuple is out of range
             result_payload.append(z)
 
-        return result_payload
+        return result_payload, k_mer_rep
 
     def save_z_before_rs(self, payload: List[str], barcode: str) -> None:
         with open(self.results_file_z_before_rs_payload, 'a+', encoding='utf-8') as f:

@@ -1,5 +1,5 @@
 from itertools import combinations
-from typing import List
+from typing import List, Tuple
 
 import numpy as np
 
@@ -46,7 +46,7 @@ class VTSyndromeUtils:
                 table[syndrome_index].append(bits)
         return table
 
-    def generate_z_list_from_table(self):
+    def generate_z_list_from_table(self) -> Tuple[dict, dict, dict, dict, dict, dict, dict]:
         table = self.generate_table()
 
         z_index = 1
@@ -55,12 +55,16 @@ class VTSyndromeUtils:
         z_to_binary = {}
         binary_to_z = {}
         binary_to_k_mer_representation = {}
+        k_mer_representation_to_kmer_vector_representation = {}
+        kmer_vector_representation_to_mer_representation = {}
         for syn, xs_list in enumerate(table):
             for index, x_list in enumerate(xs_list):
                 z_name = 'Z' + str(z_index)
                 x_tuple = convert_to_x_tuple(x_list=x_list)
                 z_to_k_mer_representative[z_name] = x_tuple
                 k_mer_representative_to_z[x_tuple] = z_name
+                kmer_vector_representation_to_mer_representation[x_list] = x_tuple
+                k_mer_representation_to_kmer_vector_representation[x_tuple] = x_list
 
                 syn_as_bits = uts.decimal_to_bits(decimal_number=syn, amount_bits=self.bits_per_syndrome)
                 index_as_bits = uts.decimal_to_bits(decimal_number=index, amount_bits=self.bits_per_syndrome)
@@ -72,4 +76,9 @@ class VTSyndromeUtils:
 
                 z_index += 1
 
-        return z_to_k_mer_representative, k_mer_representative_to_z, z_to_binary, binary_to_z, binary_to_k_mer_representation
+        return (z_to_k_mer_representative,
+                k_mer_representative_to_z,
+                z_to_binary, binary_to_z,
+                binary_to_k_mer_representation,
+                k_mer_representation_to_kmer_vector_representation,
+                kmer_vector_representation_to_mer_representation)

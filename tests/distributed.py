@@ -81,11 +81,13 @@ def compute_sigma_distance(config: Dict):
 
 def build_runs():
     number_of_oligos_per_barcode = [1000]
-    number_of_sampled_oligos_from_file = [-1, 10, 20, 50, 100, 200, 500, 1000]
+    # number_of_sampled_oligos_from_file = [-1, 10, 20, 50, 100, 200, 500, 1000]
+    number_of_sampled_oligos_from_file = [1000]
     oligos_and_samples = list(itertools.product(number_of_oligos_per_barcode, number_of_sampled_oligos_from_file))
     oligos_and_samples = [s for s in oligos_and_samples if s[0] >= s[1]]
 
-    errors = [0.01, 0.001, 0.0001, 0]
+    # errors = [0.01, 0.001, 0.0001, 0]
+    errors = [0]
     # sizes_and_bit_sizes = [(3, 9), (5, 12), (7, 13)]
     sizes_and_bit_sizes = [(4, 6)]
     # variable_number_of_sampled_oligos_from_file = {3: 5, 5: 10, 7: 15}
@@ -126,6 +128,7 @@ def build_runs():
     return runs
 
 
+# def run_config_n_times(config_for_run: Dict, n: int = 30):
 def run_config_n_times(config_for_run: Dict, n: int = 30):
     for run_number in range(n):
         logging.info(f'STARTED {run_number:2d} {config_for_run}')
@@ -150,7 +153,7 @@ def run_config(config_for_run: Dict, run_number):
         drop_if_not_exact_number_of_chunks=drop_if_not_exact_number_of_chunks,
     )
 
-    generate_random_text_file(size_kb=10, file=input_text)
+    generate_random_text_file(size_kb=1.31, file=input_text)
     print(f"$$$$$$$$ Running {output_dir} $$$$$$$$")
     main(config)
 

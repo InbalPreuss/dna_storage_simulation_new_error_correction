@@ -39,7 +39,7 @@ def iterate_over_bit_chunks(binary_info, chunk_size=3):
     for i in range(0, len(binary_info), chunk_size):
         chunk = binary_info[i:i + chunk_size]
         # Process the chunk (for now, we'll just print it)
-        print(chunk)
+        # print(chunk)
 
 
 def convert_binary_string_to_tuple(binary_with_info_n_redundancy: str) -> tuple[int, ...]:

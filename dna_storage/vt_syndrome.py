@@ -1,3 +1,5 @@
+from typing import Dict, List, Tuple, Any
+
 import dna_storage.vt_syndrome_utils as vtsu
 
 import copy
@@ -7,7 +9,12 @@ import numpy as np
 
 
 class VTSyndrome:
-    def __init__(self, n: int, k: int, bits_per_syndrome: int):
+    def __init__(self, n: int, k: int,
+                 bits_per_syndrome: int,
+                 payload_len: int,
+                 payload_redundancy_len: int,
+                 binary_to_k_mer_representation: Dict):
+        self.binary_to_k_mer_representation = binary_to_k_mer_representation
         self.n = n
         self.k = k
         self.bits_per_syndrome = bits_per_syndrome
@@ -16,6 +23,8 @@ class VTSyndrome:
 
         self._input_bits = self.closest_power_of_2()
         self.vt_syn_table = self.vt_syndrome_utils.generate_table()
+
+        self.payload_len = payload_len - payload_redundancy_len
 
     def codeword_to_syndrome(self, codeword: tuple[int, ...]) -> int:
         syndrome_sum = sum(i * bit for i, bit in enumerate(codeword))
@@ -41,15 +50,30 @@ class VTSyndrome:
         closest_power = np.log2(2 ** (binom.bit_length() - 1))
         return int(closest_power)
 
-    def encode(self, message: tuple[int, ...]) -> tuple[int, ...]:
+    def encode_message(self, message: tuple[int, ...]) -> tuple[int, ...]:
         xs_vector = self.get_comb_codeword(bit_tuple=message)
         return xs_vector
+
+    def encode(self, binary_list) -> tuple[list[int], list[Any]]:
+        syndrome_array = []
+        xs_vector_array = []
+        xs_array = []
+        binary_array = [tuple(int(char) for char in string) for string in binary_list]
+        for item in binary_array[:self.payload_len]:
+            syn, xs_vector = self.get_syn_from_input_bits(
+                bits_tuple=item), self.encode_message(message=item)
+            syndrome_array.append(syn)
+            xs_vector_array.append(xs_vector)
+            xs_array.append(self.binary_to_k_mer_representation[item])
+
+        return syndrome_array, xs_array
 
     def decode(self, codeword: tuple[int, ...], syn_output_from_rs: int):
         current_syn = self.codeword_to_syndrome(codeword=codeword)
 
         if current_syn != syn_output_from_rs or sum(codeword) < self.k:
-            i = np.mod(np.abs(syn_output_from_rs - current_syn), self.n)
+            # i = np.mod(np.abs(syn_output_from_rs - current_syn), self.n)
+            i = np.mod((int(syn_output_from_rs) - current_syn), self.n) # TODO: check if this is correct, does it needs abs or not?
             codeword_list = list(codeword)
             codeword_list[i] = 1
             codeword = codeword_list
@@ -68,7 +92,7 @@ if __name__ == '__main__':
     bit_tuple = (0, 0, 1, 0, 0, 1)
 
     # ENCODE
-    codeword_encoded = vtsynd.encode(message=bit_tuple)
+    codeword_encoded = vtsynd.encode_message(message=bit_tuple)
     print(f'encoded codeword: {codeword_encoded}, syn={vtsynd.codeword_to_syndrome(codeword=codeword_encoded)}')
 
     # NOISE
