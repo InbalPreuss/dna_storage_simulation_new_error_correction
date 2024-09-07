@@ -194,7 +194,7 @@ if __name__ == '__main__':
 
     # bch = bchlib.BCH(16, m=13)
     data = b'1234567'
-    ecc = bch.encode(data)
+    ecc = bch.encode_message(data)
     data_ecc = data + ecc
     data_ecc = bytearray(data_ecc)
     #insert error to data_ecc

@@ -64,27 +64,32 @@ class Encoder:
         number_of_blocks = 0
         with open(self.file_name, 'r', encoding='utf-8') as file:
             z_list_accumulation_per_block = []
+            binary_list_per_block = []
             for line in file:
                 line = line.strip('\n')
                 z_list = []
                 binary_list = []
-                line = '011101000111100101011000010110100111' #TODO: delete this - for tests only!!!!!
+                # line = '011101000111100101011000010110100111' #TODO: delete this - for tests only!!!!!
                 for binary_to_transform in wrap(line, self.bits_per_z):
                     z = self.binary_to_z(binary=binary_to_transform)
                     z_list.append(z)
                     binary_list.append(binary_to_transform)
                 z_list_accumulation_per_block.append(z_list)
+                binary_list_per_block.append(binary_list)
                 if len(z_list_accumulation_per_block) == self.oligos_per_block_len:
                     number_of_blocks += 1
-                    z_list_accumulation_with_rs = self.wide_block_rs(z_list_accumulation_per_block)
+                    z_list_accumulation_with_rs = self.wide_block_rs(z_list_accumulation_per_block) #TODO: I am doing wide rs and then the payload rs,
+                    # TODO: which then the 2 oligos I add I don't have bits of information to add the bits for it.
+                    #  TODO: I need to change and do the rs on the payload, and then on the block.
                     amount_oligos_per_block_len_to_write = self.oligos_per_block_len
-                    for z_list in z_list_accumulation_with_rs:
+                    for z_list, binary_list in zip(z_list_accumulation_with_rs, binary_list_per_block):
                         oligo = self.z_to_oligo(z_list, binary_list)
                         self.save_oligo(results_file=self.results_file, oligo=oligo)
                         if amount_oligos_per_block_len_to_write > 0:
                             self.save_oligo(results_file=self.results_file_without_rs_wide, oligo=oligo)
                             amount_oligos_per_block_len_to_write = amount_oligos_per_block_len_to_write - 1
                     z_list_accumulation_per_block = []
+                    binary_list_per_block = []
         return number_of_blocks
 
     def binary_to_z(self, binary: str) -> str:

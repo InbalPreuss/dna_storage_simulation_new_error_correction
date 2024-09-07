@@ -165,13 +165,15 @@ class RSPayloadAdapter:
         # payload_as_int = [self._payload_to_int[z] for z in payload_encoded]
         # if self._payload_coder.check_fast(payload_as_int):
         if self._payload_coder_rs.check_fast(payload_encoded):
-            return payload_encoded[0:self.payload_len]
+            # return payload_encoded[0:self.payload_len]
+            return payload_encoded
         else:
             try:
                 # payload_as_gf, rs_as_gf = self._payload_coder.decode(payload_as_int, nostrip=True, return_string=False)
                 payload_as_gf, rs_as_gf = self._payload_coder_rs.decode(payload_encoded, erasures_pos=erasures_pos, nostrip=True, return_string=False)
             except RSCodecError:
-                return payload_encoded[0:self.payload_len]
+                # return payload_encoded[0:self.payload_len]
+                return payload_encoded
             # payload = [self._int_to_payload[i] for i in payload_as_gf]
             # return payload
             return payload_as_gf + rs_as_gf
@@ -201,7 +203,7 @@ class RSWideAdapter:
         payload_encoded = [self._int_to_payload[z] for z in payload_encoded_as_polynomial]
         return payload_encoded
 
-    def decode(self, payload_encoded):
+    def decode(self, payload_encoded) -> list:
         ff.set_globals(*self.ff_globals)
         payload_as_int = [self._payload_to_int[z] for z in payload_encoded]
         if self._payload_coder.check_fast(payload_as_int):

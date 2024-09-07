@@ -153,7 +153,7 @@ def run_config(config_for_run: Dict, run_number):
         drop_if_not_exact_number_of_chunks=drop_if_not_exact_number_of_chunks,
     )
 
-    generate_random_text_file(size_kb=1.31, file=input_text)
+    # generate_random_text_file(size_kb=1.31, file=input_text) #TODO: delete this comment
     print(f"$$$$$$$$ Running {output_dir} $$$$$$$$")
     main(config)
 
@@ -165,20 +165,20 @@ def run_config(config_for_run: Dict, run_number):
     dist_sigma_before_rs, dist_sigma_after_rs_payload, dist_sigma_after_rs_wide, input_data_encoder_results_file_len, input_data_encoder_without_rs_payload_len, input_data_encoder_without_rs_wide_len = compute_sigma_distance(config)
     dist = levenshtein.distance(input_data, output_data)
 
-    # gzip and delete files
-    files_in_dir = list(Path(output_dir).iterdir())
-    exclude = ["temp_shuffle_db", "temp_sort_oligo_db"]
-    files = [f for f in files_in_dir if f.name not in exclude]
-    files_delete = [f for f in files_in_dir if f.name in exclude]
-    for file in files:
-        if file.suffix == '.gz':
-            f_out_name = file
-        else:
-            f_out_name = file.with_suffix(file.suffix + ".gz")
-        with open(file, "rb") as f_in, gzip.open(f_out_name, "wb") as f_out:
-            f_out.writelines(f_in)
-        os.remove(file)
-    [os.remove(f) for f in files_delete]
+    # # gzip and delete files
+    # files_in_dir = list(Path(output_dir).iterdir())
+    # exclude = ["temp_shuffle_db", "temp_sort_oligo_db"]
+    # files = [f for f in files_in_dir if f.name not in exclude]
+    # files_delete = [f for f in files_in_dir if f.name in exclude]
+    # for file in files:
+    #     if file.suffix == '.gz':
+    #         f_out_name = file
+    #     else:
+    #         f_out_name = file.with_suffix(file.suffix + ".gz")
+    #     with open(file, "rb") as f_in, gzip.open(f_out_name, "wb") as f_out:
+    #         f_out.writelines(f_in)
+    #     os.remove(file)
+    # [os.remove(f) for f in files_delete] # TODO: remove comments on the zip
 
     # write a json results file
     res_file = Path(output_dir) / f"config_and_levenshtein_distance_{dist}.json"
