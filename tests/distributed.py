@@ -82,12 +82,12 @@ def compute_sigma_distance(config: Dict):
 def build_runs():
     number_of_oligos_per_barcode = [1000]
     # number_of_sampled_oligos_from_file = [-1, 10, 20, 50, 100, 200, 500, 1000]
-    number_of_sampled_oligos_from_file = [1000]
+    number_of_sampled_oligos_from_file = [10]
     oligos_and_samples = list(itertools.product(number_of_oligos_per_barcode, number_of_sampled_oligos_from_file))
     oligos_and_samples = [s for s in oligos_and_samples if s[0] >= s[1]]
 
     # errors = [0.01, 0.001, 0.0001, 0]
-    errors = [0]
+    errors = [0.01, 0]
     # sizes_and_bit_sizes = [(3, 9), (5, 12), (7, 13)]
     sizes_and_bit_sizes = [(4, 6)]
     # variable_number_of_sampled_oligos_from_file = {3: 5, 5: 10, 7: 15}
@@ -106,11 +106,12 @@ def build_runs():
                         continue
                     was_variable = True
                     number_of_sampled_oligos_from_file = variable_number_of_sampled_oligos_from_file[size]
-                #name = f'[subset size {size}, bits per z {bits_per_z:>2} ]' \
-                #       f'[num oligos per bc {number_of_oligos_per_barcode:>6} ]\n' \
-                #       f'[num oligos sampled after syn {number_of_sampled_oligos_from_file:>6} ]\n' \
-                #       f'[errors, sub {prod[0]:<6}, del {prod[1]:<6}, inser {prod[2]:<6} ]\n'
-                name = "denkta"
+                name = f'[SS{size},bitsPerZ{bits_per_z} ]' \
+                      f'[numOPerBc{number_of_oligos_per_barcode}]\n' \
+                      f'[numOSampAfterSyn{number_of_sampled_oligos_from_file}]\n' \
+                      f'[ERR,Sub{prod[0]},Del{prod[1]},Inser{prod[2]}]\n'
+                # name = f"denkta,ERR,Sub{prod[0]:<6},Del{prod[1]:<6},Inser{prod[2]:<6}" # TODO: delete this line
+                # name = f"denkta" # TODO: delete this line
                 output_dir = os.path.join("data/testing/", name.replace("\n", ""))
                 runs.append({
                     "number_of_oligos_per_barcode": number_of_oligos_per_barcode,
@@ -128,8 +129,8 @@ def build_runs():
     return runs
 
 
-# def run_config_n_times(config_for_run: Dict, n: int = 30):
-def run_config_n_times(config_for_run: Dict, n: int = 30):
+# def run_config_n_times(config_for_run: Dict, n: int = 30): # TODO: remove comment to have 30 repeats
+def run_config_n_times(config_for_run: Dict, n: int = 1):
     for run_number in range(n):
         logging.info(f'STARTED {run_number:2d} {config_for_run}')
         run_config(config_for_run=config_for_run, run_number=run_number)
@@ -153,7 +154,8 @@ def run_config(config_for_run: Dict, run_number):
         drop_if_not_exact_number_of_chunks=drop_if_not_exact_number_of_chunks,
     )
 
-    # generate_random_text_file(size_kb=1.31, file=input_text) #TODO: delete this comment
+    # generate_random_text_file(size_kb=1.31, file=input_text)
+    generate_random_text_file(size_kb=1, file=input_text)
     print(f"$$$$$$$$ Running {output_dir} $$$$$$$$")
     main(config)
 

@@ -38,7 +38,7 @@ def subset_size_and_error_plot(number_of_oligos_per_barcode: int = 20,
             products = [i for i in prods if
                         (i[0] == 0 and i[1] == 0) or (i[0] == 0 and i[2] == 0) or (i[1] == 0 and i[2] == 0)]
             for prod in products:
-                generate_random_text_file(size_kb=10, file='./data/testing/random_file_10_KiB.txt')
+                # generate_random_text_file(size_kb=10, file='./data/testing/random_file_10_KiB.txt') TODO: uncomment this
                 config = build_config(subset_size=size,
                                       bits_per_z=bits_per_z,
                                       letter_substitution_error_ratio=prod[0],

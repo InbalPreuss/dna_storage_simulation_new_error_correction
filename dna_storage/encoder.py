@@ -79,6 +79,11 @@ class Encoder:
                 if len(z_list_accumulation_per_block) == self.oligos_per_block_len:
                     number_of_blocks += 1
                     z_list_accumulation_with_rs = self.wide_block_rs(z_list_accumulation_per_block) #TODO: I am doing wide rs and then the payload rs,
+
+                    binary_z_list_only_rs = []
+                    for z_list_only_rs in z_list_accumulation_with_rs[self.oligos_per_block_len:]:
+                        binary_z_list_only_rs.append([''.join(map(str, self.z_to_binary[z])) for z in z_list_only_rs])
+                    binary_list_per_block = binary_list_per_block + binary_z_list_only_rs
                     # TODO: which then the 2 oligos I add I don't have bits of information to add the bits for it.
                     #  TODO: I need to change and do the rs on the payload, and then on the block.
                     amount_oligos_per_block_len_to_write = self.oligos_per_block_len

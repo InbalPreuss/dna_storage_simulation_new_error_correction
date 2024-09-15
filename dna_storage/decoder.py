@@ -95,6 +95,7 @@ class Decoder:
                     if next_barcode_should_be != barcode:
                         unique_payload_block_with_rs.append(dummy_payload)
                         unique_barcode_block_with_rs.append(next_barcode_should_be)
+                        # unique_payload_block_rs.append(dummy_payload)
                     if len(payload_accumulation) > self.min_number_of_oligos_per_barcode:
                         unique_payload, payload_k_mer_rep = self.dna_to_unique_payload(
                             payload_accumulation=payload_accumulation)
@@ -121,6 +122,7 @@ class Decoder:
                                                            total_oligos_per_block_with_rs_oligos:]
                             unique_barcode_block_with_rs = unique_barcode_block_with_rs[
                                                            total_oligos_per_block_with_rs_oligos:]
+                            unique_payload_block_rs = unique_payload_block_rs[total_oligos_per_block_with_rs_oligos:]
                     payload_accumulation = [payload]
                     barcode_prev = barcode
                 else:
@@ -354,7 +356,7 @@ class Decoder:
                     # if we have XErasure then convert the k_mer to a vector like this,
                     # or if it doesn't have any representation in syndrome table
                     codeword_vector = [0] * self.payload_coder_vt_syndrome.n
-                    filtered_k_mer_rep = tuple(x for x in k_mer_rep if 'XErasure' not in x)
+                    filtered_k_mer_rep = tuple(x for x in k_mer_rep if 'X0' not in x)
                     for x in filtered_k_mer_rep:
                         index = int(x[1:]) - 1  # Convert 'X' index to zero-based index
                         codeword_vector[index] = 1
@@ -366,7 +368,7 @@ class Decoder:
             print(f'codewords_syndrome=\n{codewords_syndrome}')
 
             # Find the indices where 'ZErasure' is located
-            erasures_positions = [index for index, value in enumerate(payload) if value == 'ZErasure']
+            erasures_positions = [index for index, value in enumerate(payload) if value == 'Z0']
             print('erasures_positions=\n', erasures_positions)
             syn_outputs_after_rs = self.payload_coder_rs.decode(payload_encoded=codewords_syndrome,
                                                                erasures_pos=erasures_positions)
@@ -375,16 +377,22 @@ class Decoder:
 
             decoded_codewords_vector = []
             decoded_codewords = []
-            for codeword, syn_output_from_rs in zip(codewords, syn_outputs_after_rs):
+            for i, (codeword, syn_output_from_rs) in enumerate(zip(codewords, syn_outputs_after_rs)):
                 decoded_codewords_vector.append(self.payload_coder_vt_syndrome.decode(codeword=codeword,
                                                                                       syn_output_from_rs=syn_output_from_rs))
-                decoded_codewords.append(self.kmer_vector_representation_to_mer_representation[decoded_codewords_vector[-1]])
-                payload_decoded.append(self.k_mer_representative_to_z[decoded_codewords[-1]])
+                if sum(decoded_codewords_vector[-1]) < self.payload_coder_vt_syndrome.k:
+                    decoded_codewords.append(payload_k_mer_rep[i])
+                    payload_decoded.append('Z0')
+                else:
+                    decoded_codewords.append(self.kmer_vector_representation_to_mer_representation[decoded_codewords_vector[-1]])
+                    payload_decoded.append(self.k_mer_representative_to_z[decoded_codewords[-1]])
             print(f'decoded_codewords=\n{decoded_codewords}')
             payload_rs = payload_decoded[-self.payload_rs_len:]
             payload_decoded = payload_decoded[:-self.payload_rs_len]
         else:
-            payload_decoded = self.wide_coder.decode(payload_encoded=payload)
+            erasures_positions = [index for index, value in enumerate(payload) if value == 'Z0']
+            payload_decoded = self.wide_coder.decode(payload_encoded=payload, erasures_pos=erasures_positions)
+            x=4
 
         return payload_decoded, payload_rs
 
@@ -414,7 +422,7 @@ class Decoder:
                 # OK
                 # reps = [('XErasure' + str(i), i) for i in range(1, self.subset_size + 1)]
                 # BEST
-                s = set(['XErasure' + str(i) for i in range(1, self.subset_size + 1)])
+                s = set(['X0' + str(i) for i in range(1, self.subset_size + 1)])
                 # s = set(['XErasure'] * self.subset_size)
                 t = set([r[0] for r in reps])
                 diff = sorted(list(s - t))
@@ -424,7 +432,7 @@ class Decoder:
             try:
                 z = self.k_mer_representative_to_z[k_mer_rep[-1]]
             except KeyError:
-                z = 'ZErasure'  # The X tuple is out of range
+                z = 'Z0'  # The X tuple is out of range
             result_payload.append(z)
 
         return result_payload, k_mer_rep

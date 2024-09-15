@@ -71,7 +71,7 @@ class VTSyndrome:
     def decode(self, codeword: tuple[int, ...], syn_output_from_rs: int):
         current_syn = self.codeword_to_syndrome(codeword=codeword)
 
-        if sum(codeword) < self.k: # TODO: Check this is correct, and not using the statment (syn_output_from_rs!= current_syn) in the if
+        if sum(codeword) == (self.k - 1): # TODO: Check this is correct, and not using the statment (syn_output_from_rs!= current_syn) in the if
             # i = np.mod(np.abs(syn_output_from_rs - current_syn), self.n)
             i = np.mod((int(syn_output_from_rs) - current_syn), self.n) # TODO: check if this is correct, does it needs abs or not?
             codeword_list = list(codeword)
