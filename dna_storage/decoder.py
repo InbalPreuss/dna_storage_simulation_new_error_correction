@@ -79,7 +79,7 @@ class Decoder:
     def run(self):
         barcode_prev = ''
         payload_accumulation = []
-        dummy_payload = ['Z1' for _ in range(self.payload_len)]
+        dummy_payload = ['Z0' for _ in range(self.payload_total_len - self.payload_rs_len)]
         total_oligos_per_block_with_rs_oligos = self.oligos_per_block_len + self.oligos_per_block_rs_len
         with open(self.input_file, 'r', encoding='utf-8') as file:
             unique_payload_block_with_rs = []
@@ -101,14 +101,14 @@ class Decoder:
                             payload_accumulation=payload_accumulation)
                         self.save_z_before_rs(barcode=barcode_prev, payload=unique_payload)
                         unique_payload_corrected, payload_rs = self.error_correction_payload(payload=unique_payload,
-                                                                                 payload_k_mer_rep=payload_k_mer_rep)
+                                                                                             payload_k_mer_rep=payload_k_mer_rep)
                         self.save_z_after_rs(barcode=barcode_prev, payload=unique_payload_corrected)
                         if len(unique_payload_corrected) > 0:
                             unique_payload_block_with_rs.append(unique_payload_corrected)
                             unique_payload_block_rs.append(payload_rs)
                         else:
                             unique_payload_block_with_rs.append(dummy_payload)
-                            #TODO: What should I put unique_payload_rs in this case? (look at the if above)
+                            # TODO: What should I put unique_payload_rs in this case? (look at the if above)
                             # TODO: should I put XErasure instead of the XDummy?
 
                         unique_barcode_block_with_rs.append(barcode_prev)
@@ -129,9 +129,11 @@ class Decoder:
                     payload_accumulation.append(payload)
 
             if len(payload_accumulation) > self.min_number_of_oligos_per_barcode:
-                unique_payload, payload_k_mer_rep = self.dna_to_unique_payload(payload_accumulation=payload_accumulation)
+                unique_payload, payload_k_mer_rep = self.dna_to_unique_payload(
+                    payload_accumulation=payload_accumulation)
                 self.save_z_before_rs(barcode=barcode_prev, payload=unique_payload)
-                unique_payload_corrected, payload_rs = self.error_correction_payload(payload=unique_payload, payload_k_mer_rep=payload_k_mer_rep)
+                unique_payload_corrected, payload_rs = self.error_correction_payload(payload=unique_payload,
+                                                                                     payload_k_mer_rep=payload_k_mer_rep)
                 self.save_z_after_rs(barcode=barcode_prev, payload=unique_payload_corrected)
                 if len(unique_payload_corrected) > 0:
                     unique_payload_block_with_rs.append(unique_payload_corrected)
@@ -162,7 +164,8 @@ class Decoder:
                              unique_payload_block_with_rs: List[List[str]],
                              unique_payload_block_rs: List) -> None:
         unique_payload_block = self.wide_rs(unique_payload_block_with_rs)
-        for unique_barcode, unique_payload, unique_payload_rs in zip(unique_barcode_block_with_rs, unique_payload_block, unique_payload_block_rs):
+        for unique_barcode, unique_payload, unique_payload_rs in zip(unique_barcode_block_with_rs, unique_payload_block,
+                                                                     unique_payload_block_rs):
             binary = self.unique_payload_to_binary(payload=unique_payload, payload_rs=unique_payload_rs)
             self.save_z_after_rs_wide(barcode=unique_barcode, payload=unique_payload)
             self.save_binary(binary=binary, barcode_prev=unique_barcode)
@@ -170,6 +173,10 @@ class Decoder:
     def wide_rs(self, unique_payload_block_with_rs):
         rs_removed = [[] for _ in range(int(self.oligos_per_block_len))]
         for col in range(len(unique_payload_block_with_rs[0])):
+            for idx, elem in enumerate(unique_payload_block_with_rs):
+                if len(elem) <= col:
+                    print(
+                        f"Sublist at index {idx} is too short: {elem}, length = {len(elem)}")  # TODO: DELETE this line
             payload = [elem[col] for elem in unique_payload_block_with_rs]
             col_without_rs, payload_rs = self.error_correction_payload(payload=payload, payload_or_wide='wide')
             if len(col_without_rs) > self.oligos_per_block_len:
@@ -183,7 +190,7 @@ class Decoder:
                 rs_removed[idx].append(z)
         return rs_removed
 
-    def unique_payload_to_binary(self, payload: List[str], payload_rs:List[str]) -> str:
+    def unique_payload_to_binary(self, payload: List[str], payload_rs: List[str]) -> str:
         binary = []
         for z in payload:
             try:
@@ -206,8 +213,9 @@ class Decoder:
                 # z_to_binary.append(self.z_to_binary[z][self.bits_per_syndrome:]) #TODO: make this self.bits_per_syndrome instead of 3.
                 z_to_binary.append(self.z_to_binary[z][3:])
             except KeyError:
-                return ''
+                z_to_binary.append((0, 0, 0))
         return ''.join([''.join(map(str, tup)) for tup in z_to_binary])
+
     def wrong_barcode_and_payload_len(self, barcode_and_payload: str) -> bool:
         return len(barcode_and_payload) != self.barcode_len + self.payload_total_len_nuc
 
@@ -292,7 +300,6 @@ class Decoder:
         #         Counter({'X7': 276, 'X3': 262, 'X8': 238, 'X6': 224})]
         # print(f'0 Erasure error={hist}')
 
-
         # '''1 Erasure error'''
         # hist = [Counter({'X7': 277, 'X6': 246, 'X8': 239}),
         #         Counter({'X4': 258, 'X5': 256, 'X3': 255, 'X8': 231}),
@@ -334,7 +341,6 @@ class Decoder:
         #         Counter({'X7': 276, 'X3': 262, 'X8': 238, 'X6': 224})]# TODO: delete this - for tests only!!!!!
         print(f'2 Erasure of X in the same Z error={hist}')
 
-
         return hist
 
     def error_correction_payload(self, payload: Union[str, List[str]], payload_k_mer_rep: List[str] = None,
@@ -370,8 +376,9 @@ class Decoder:
             # Find the indices where 'ZErasure' is located
             erasures_positions = [index for index, value in enumerate(payload) if value == 'Z0']
             print('erasures_positions=\n', erasures_positions)
+            print('payload=\n', payload)
             syn_outputs_after_rs = self.payload_coder_rs.decode(payload_encoded=codewords_syndrome,
-                                                               erasures_pos=erasures_positions)
+                                                                erasures_pos=erasures_positions)
             print('syn_outputs_after_rs=\n', syn_outputs_after_rs)
             # syn_output_from_rs = self.payload_coder_vt_syndrome.codeword_to_syndrome(codeword=codeword)
 
@@ -380,19 +387,27 @@ class Decoder:
             for i, (codeword, syn_output_from_rs) in enumerate(zip(codewords, syn_outputs_after_rs)):
                 decoded_codewords_vector.append(self.payload_coder_vt_syndrome.decode(codeword=codeword,
                                                                                       syn_output_from_rs=syn_output_from_rs))
-                if sum(decoded_codewords_vector[-1]) < self.payload_coder_vt_syndrome.k:
+                # if sum(decoded_codewords_vector[-1]) < self.payload_coder_vt_syndrome.k:
+                #     decoded_codewords.append(payload_k_mer_rep[i])
+                #     payload_decoded.append('Z0')
+                # else:
+                try:
+                    # I succeeded in the decoding process,
+                    # then I will convert the decoded codeword to the payload_decoded
+                    decoded_codewords.append(
+                        self.kmer_vector_representation_to_mer_representation[decoded_codewords_vector[-1]])
+                    payload_decoded.append(self.k_mer_representative_to_z[decoded_codewords[-1]])
+                except:
+                    # Failed in the decoding, thus putting Z0 which is erasure error
                     decoded_codewords.append(payload_k_mer_rep[i])
                     payload_decoded.append('Z0')
-                else:
-                    decoded_codewords.append(self.kmer_vector_representation_to_mer_representation[decoded_codewords_vector[-1]])
-                    payload_decoded.append(self.k_mer_representative_to_z[decoded_codewords[-1]])
             print(f'decoded_codewords=\n{decoded_codewords}')
             payload_rs = payload_decoded[-self.payload_rs_len:]
             payload_decoded = payload_decoded[:-self.payload_rs_len]
         else:
             erasures_positions = [index for index, value in enumerate(payload) if value == 'Z0']
             payload_decoded = self.wide_coder.decode(payload_encoded=payload, erasures_pos=erasures_positions)
-            x=4
+            x = 4
 
         return payload_decoded, payload_rs
 
@@ -422,6 +437,7 @@ class Decoder:
                 # OK
                 # reps = [('XErasure' + str(i), i) for i in range(1, self.subset_size + 1)]
                 # BEST
+                # s = set(['X0' + str(i) for i in range(1, self.subset_size + 1)])
                 s = set(['X0' + str(i) for i in range(1, self.subset_size + 1)])
                 # s = set(['XErasure'] * self.subset_size)
                 t = set([r[0] for r in reps])

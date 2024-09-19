@@ -169,8 +169,22 @@ class RSPayloadAdapter:
             return payload_encoded
         else:
             try:
+                # Trying to correct erasure error
+
                 # payload_as_gf, rs_as_gf = self._payload_coder.decode(payload_as_int, nostrip=True, return_string=False)
-                payload_as_gf, rs_as_gf = self._payload_coder_rs.decode(payload_encoded, erasures_pos=erasures_pos, nostrip=True, return_string=False)
+                # TODO: check why when somtimes we don't succeed in correcting using erasure error,
+                #  we get rs_as_gf the size of 1 instead of size of 2
+                payload_as_gf, rs_as_gf = self._payload_coder_rs.decode(payload_encoded,
+                                                                        erasures_pos=erasures_pos,
+                                                                        nostrip=True,
+                                                                        return_string=False)
+                # Didn't succeed in correcting the erasure error, thus try to correct it without erasure
+                if len(payload_as_gf + rs_as_gf) != self.payload_len + self.payload_rs_len:
+                    payload_as_gf, rs_as_gf = self._payload_coder_rs.decode(payload_encoded,
+                                                                            nostrip=True,
+                                                                            return_string=False)
+
+                    raise RSCodecError
             except RSCodecError:
                 # return payload_encoded[0:self.payload_len]
                 return payload_encoded
@@ -205,13 +219,13 @@ class RSWideAdapter:
 
     def decode(self, payload_encoded, erasures_pos: list) -> list:
         ff.set_globals(*self.ff_globals)
-        payload_as_int = [self._payload_to_int[z] for z in payload_encoded] # TODO: origin code, lets see if the new payload_as_int code is good enough
-        # payload_as_int = []
-        # for z in payload_encoded:
-        #     if z == 'Z0':
-        #         payload_as_int.append(0)
-        #     else:
-        #         payload_as_int.append(self._payload_to_int[z])
+        # payload_as_int = [self._payload_to_int[z] for z in payload_encoded] # TODO: origin code, lets see if the new payload_as_int code is good enough
+        payload_as_int = []
+        for z in payload_encoded:
+            if z == 'Z0':
+                payload_as_int.append(0)
+            else:
+                payload_as_int.append(self._payload_to_int[z])
 
         if self._payload_coder.check_fast(payload_as_int):
             return payload_encoded[0:self.payload_len]

@@ -170,7 +170,7 @@ class BinaryResultToText:
 
 def generate_random_text_file(size_kb: int, file: PathLike) -> None:
     text = ''.join(choice(ascii_letters) for i in range(1024*size_kb))
-    text = 'QEOQoCxcENdKLaXKztzNqCIJQcDibQZEtbfmwXDNcZsKIGGGAKnHgmejoxdJSFPNNCQEOQoCxcENdKLaXKztzNqCIJQcDibQZEtbfmwXDNcZsKIGGGAKnHgmejoxdJSFPNNCQEOQoCxcENdKLaXKztzNqCIJQcDibQZEtbfmwXDNcZsKIGGGAKnHgmejoxdJSFPNNCQEOQoCxcENdKLaXKztzNqCIJQcDibQZEtbfmwXDNcZsKIGGGAKnHgmejoxdJSFPNNCQEOQoCxcENdKLaXKztzNqCIJQcDibQZEtbfmwXDNcZsKIGGGAKnHgmejoxdJSFPNNCQEOQoCxcENdKLaXKztzNqCIJQcDibQZEtbfmwXDNcZsKIGGGAKnHgmejoxdJSFPNNC' #TODO: delete this line - for tests only!!!!!
+    # text = 'QEOQoCxcENdKLaXKztzNqCIJQcDibQZEtbfmwXDNcZsKIGGGAKnHgmejoxdJSFPNNCQEOQoCxcENdKLaXKztzNqCIJQcDibQZEtbfmwXDNcZsKIGGGAKnHgmejoxdJSFPNNCQEOQoCxcENdKLaXKztzNqCIJQcDibQZEtbfmwXDNcZsKIGGGAKnHgmejoxdJSFPNNCQEOQoCxcENdKLaXKztzNqCIJQcDibQZEtbfmwXDNcZsKIGGGAKnHgmejoxdJSFPNNCQEOQoCxcENdKLaXKztzNqCIJQcDibQZEtbfmwXDNcZsKIGGGAKnHgmejoxdJSFPNNCQEOQoCxcENdKLaXKztzNqCIJQcDibQZEtbfmwXDNcZsKIGGGAKnHgmejoxdJSFPNNC' #TODO: delete this line - for tests only!!!!!
     with open(file, 'w') as f:
         f.write(text)
 

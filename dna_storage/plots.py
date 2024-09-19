@@ -16,6 +16,8 @@ sns.set_theme(style="ticks")
 
 Path("data/testing/plots").mkdir(parents=True, exist_ok=True)
 
+OUTPUT_FOLDER = Path(os.path.join('..', 'tests', 'data', 'testing'))
+
 
 def delete_double_gz() -> pd.DataFrame:
     output_dir = Path("data/testing")
@@ -94,9 +96,9 @@ def draw_reads_histograms(df: pd.DataFrame):
 
 
 def load_data_to_df() -> pd.DataFrame:
-    output_dir = Path("data/testing")
+    # output_dir = Path("data/testing")
 
-    run_dirs = list(f for f in output_dir.iterdir() if f.name.startswith("SS"))
+    run_dirs = list(f for f in OUTPUT_FOLDER.iterdir() if f.name.startswith("[SS"))
 
     json_files = []
 
@@ -116,6 +118,8 @@ def load_data_to_df() -> pd.DataFrame:
 
     df = pd.DataFrame(info_list)
     df["output_dir"] = df["output_dir"].apply(lambda x: x.split("data/testing/")[1].split(" trial")[0])
+
+    df.to_csv(f'{OUTPUT_FOLDER}/df_all_data.csv', index=False)
     return df
 
 
@@ -304,9 +308,9 @@ def draw_errorbar_10_100sample_and_0_001_error_errortypes(df: pd.DataFrame, perc
 # Filter: size = 5
 def draw_errorbar_in_one_graph(df: pd.DataFrame, is_normalize_data, percentage: bool = False):
     # samples = [10, 20, 50, 100]
-    samples = [10, 20, 50, 100, 200]
+    samples = [6, 10, 20, 50, 100, 200]
     error_values = [0.01]
-    size = [5]
+    size = [4]
     title_start = ""
 
     trials_group = df.groupby([
@@ -386,62 +390,62 @@ def draw_errorbar_in_one_graph(df: pd.DataFrame, is_normalize_data, percentage: 
 # Y = Normalized distance (with error bars, show the zero!)
 # Color = error type {S,I,D}
 # Filter: size = 5
-def draw_errorbar_in_one_graph(df: pd.DataFrame, percentage: bool = False):
-    samples = [10, 20, 50, 100]
-    error_values = [0.01]
-    size = [5]
-
-    trials_group = df.groupby([
-        'number_of_oligos_per_barcode',
-        'size',
-        'bits_per_z'
-    ])
-
-    errors = ["substitution_error", "deletion_error", "insertion_error"]
-    y_values = {
-                "levenshtein_distance_sigma_before_rs": "input_data_encoder_results_file_len",
-                }
-
-    for y_value in y_values.items():
-        df[y_value[0]] = df.apply(lambda x: x[y_value[0]] / x.get(y_value[1], 1), axis=1)
-    for idx, trial_group in trials_group:
-        if idx[1] not in size:
-            continue
-        fig, ax = plt.subplots(figsize=(8,6))
-
-        title="Normalized LD as a function of sample size. Error=0.01 (No error correction)"
-        fig.subplots_adjust(top=0.85, hspace=0.5, right=0.8)
-        for ax_idx, error in enumerate(errors):
-            zero_cols = [e for e in errors if e != error]
-            df_for_err = trial_group
-            for col in zero_cols:
-                df_for_err = df_for_err[df_for_err[col] == 0]
-
-            for error_value in error_values:
-                df_for_err_filtered = df_for_err.where(df_for_err[error] == error_value)
-                df_for_err_filtered = df_for_err_filtered[
-                    df_for_err_filtered['number_of_sampled_oligos_from_file'].isin(samples)]
-
-                grouped = df_for_err_filtered.groupby('number_of_sampled_oligos_from_file')[
-                    'levenshtein_distance_sigma_before_rs'].apply(list)
-                result = {key: value for key, value in grouped.to_dict().items()}
-
-                std_error = np.std(list(result.values()), axis=1)
-                mean_error = np.mean(list(result.values()), axis=1)
-
-                plt.errorbar(samples, mean_error, yerr=std_error, markersize=15,
-                             elinewidth=1, capsize=3, label=error.replace("_error", ""), linewidth=3)
-
-            plt.legend()
-            ax.set_xlabel('sampled oligos from file', x=0.5, y=-5)
-            ax.set_ylabel('Normalized Levenshtein distance')
-
-            ax.set_ylim(-0.01, 1)
-
-        plt.title(title)
-        fig.tight_layout()
-        fig.savefig(Path("data/testing/plots") / "".join(wrap(title + ".png", 71)))
-        plt.close(fig)
+# def draw_errorbar_in_one_graph(df: pd.DataFrame, percentage: bool = False):
+#     samples = [10, 20, 50, 100]
+#     error_values = [0.01]
+#     size = [5]
+#
+#     trials_group = df.groupby([
+#         'number_of_oligos_per_barcode',
+#         'size',
+#         'bits_per_z'
+#     ])
+#
+#     errors = ["substitution_error", "deletion_error", "insertion_error"]
+#     y_values = {
+#                 "levenshtein_distance_sigma_before_rs": "input_data_encoder_results_file_len",
+#                 }
+#
+#     for y_value in y_values.items():
+#         df[y_value[0]] = df.apply(lambda x: x[y_value[0]] / x.get(y_value[1], 1), axis=1)
+#     for idx, trial_group in trials_group:
+#         if idx[1] not in size:
+#             continue
+#         fig, ax = plt.subplots(figsize=(8,6))
+#
+#         title="Normalized LD as a function of sample size. Error=0.01 (No error correction)"
+#         fig.subplots_adjust(top=0.85, hspace=0.5, right=0.8)
+#         for ax_idx, error in enumerate(errors):
+#             zero_cols = [e for e in errors if e != error]
+#             df_for_err = trial_group
+#             for col in zero_cols:
+#                 df_for_err = df_for_err[df_for_err[col] == 0]
+#
+#             for error_value in error_values:
+#                 df_for_err_filtered = df_for_err.where(df_for_err[error] == error_value)
+#                 df_for_err_filtered = df_for_err_filtered[
+#                     df_for_err_filtered['number_of_sampled_oligos_from_file'].isin(samples)]
+#
+#                 grouped = df_for_err_filtered.groupby('number_of_sampled_oligos_from_file')[
+#                     'levenshtein_distance_sigma_before_rs'].apply(list)
+#                 result = {key: value for key, value in grouped.to_dict().items()}
+#
+#                 std_error = np.std(list(result.values()), axis=1)
+#                 mean_error = np.mean(list(result.values()), axis=1)
+#
+#                 plt.errorbar(samples, mean_error, yerr=std_error, markersize=15,
+#                              elinewidth=1, capsize=3, label=error.replace("_error", ""), linewidth=3)
+#
+#             plt.legend()
+#             ax.set_xlabel('sampled oligos from file', x=0.5, y=-5)
+#             ax.set_ylabel('Normalized Levenshtein distance')
+#
+#             ax.set_ylim(-0.01, 1)
+#
+#         plt.title(title)
+#         fig.tight_layout()
+#         fig.savefig(Path("data/testing/plots") / "".join(wrap(title + ".png", 71)))
+#         plt.close(fig)
 
 
 # Fig draw_lineplot_before_after_rs:
@@ -453,8 +457,8 @@ def draw_errorbar_in_one_graph(df: pd.DataFrame, percentage: bool = False):
 
 def draw_errorbar_before_after_rs(df: pd.DataFrame, percentage: bool = False):
     samples = [50]
-    error_values = [0.001]
-    size = [5]
+    error_values = [0.01]
+    size = [4]
 
     trials_group = df.groupby([
         'number_of_oligos_per_barcode',
@@ -607,7 +611,7 @@ def main():
     # draw_reads_histograms(df=df_reads)
 
     # df = load_data_to_df()
-    df = pd.read_csv('df_all_data.csv')
+    df = pd.read_csv(f'{OUTPUT_FOLDER}/df_all_data.csv')
     # draw_zero_error_percentage(df=df)
     # draw_boxplots(df=df)
     # draw_boxplots(df=df, percentage=True)
@@ -621,8 +625,8 @@ def main():
     # draw_errorbar_10_100sample_and_0_001_error_errortypes(df=df)
     # draw_errorbar_in_one_graph(df=df)
     draw_errorbar_in_one_graph(df=df, is_normalize_data=True)
-    # draw_errorbar_before_after_rs(df=df, percentage=True)
-    # draw_errorbar_before_after_rs(df=df)
+    draw_errorbar_before_after_rs(df=df, percentage=True)
+    draw_errorbar_before_after_rs(df=df)
     # input("Hit enter to terminate")
 
 

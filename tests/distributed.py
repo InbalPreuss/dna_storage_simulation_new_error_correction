@@ -81,13 +81,13 @@ def compute_sigma_distance(config: Dict):
 
 def build_runs():
     number_of_oligos_per_barcode = [1000]
-    # number_of_sampled_oligos_from_file = [-1, 10, 20, 50, 100, 200, 500, 1000]
-    number_of_sampled_oligos_from_file = [10]
+    number_of_sampled_oligos_from_file = [-1, 10, 20, 50, 100, 200, 500, 1000]
+    # number_of_sampled_oligos_from_file = [10, 20, 50]
     oligos_and_samples = list(itertools.product(number_of_oligos_per_barcode, number_of_sampled_oligos_from_file))
     oligos_and_samples = [s for s in oligos_and_samples if s[0] >= s[1]]
 
-    # errors = [0.01, 0.001, 0.0001, 0]
-    errors = [0.01, 0]
+    errors = [0.01, 0.001, 0.0001, 0]
+    # errors = [0.01, 0]
     # sizes_and_bit_sizes = [(3, 9), (5, 12), (7, 13)]
     sizes_and_bit_sizes = [(4, 6)]
     # variable_number_of_sampled_oligos_from_file = {3: 5, 5: 10, 7: 15}
@@ -130,7 +130,7 @@ def build_runs():
 
 
 # def run_config_n_times(config_for_run: Dict, n: int = 30): # TODO: remove comment to have 30 repeats
-def run_config_n_times(config_for_run: Dict, n: int = 1):
+def run_config_n_times(config_for_run: Dict, n: int = 5):
     for run_number in range(n):
         logging.info(f'STARTED {run_number:2d} {config_for_run}')
         run_config(config_for_run=config_for_run, run_number=run_number)
@@ -155,7 +155,7 @@ def run_config(config_for_run: Dict, run_number):
     )
 
     # generate_random_text_file(size_kb=1.31, file=input_text)
-    generate_random_text_file(size_kb=1, file=input_text)
+    generate_random_text_file(size_kb=10, file=input_text)
     print(f"$$$$$$$$ Running {output_dir} $$$$$$$$")
     main(config)
 
@@ -210,7 +210,7 @@ def main_fn():
     from multiprocessing import Pool, cpu_count
     configs_for_run = build_runs()
     q_listener, q = logger_init()
-    with Pool(1, worker_init, [q]) as p:
+    with Pool(cpu_count() - 1, worker_init, [q]) as p:
         p.map(run_config_n_times, configs_for_run)
 
 if __name__ == '__main__':
