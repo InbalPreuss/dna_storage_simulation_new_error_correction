@@ -173,10 +173,10 @@ class Decoder:
     def wide_rs(self, unique_payload_block_with_rs):
         rs_removed = [[] for _ in range(int(self.oligos_per_block_len))]
         for col in range(len(unique_payload_block_with_rs[0])):
-            for idx, elem in enumerate(unique_payload_block_with_rs):
-                if len(elem) <= col:
-                    print(
-                        f"Sublist at index {idx} is too short: {elem}, length = {len(elem)}")  # TODO: DELETE this line
+            # for idx, elem in enumerate(unique_payload_block_with_rs):
+            #     if len(elem) <= col:
+            #         print(
+            #             f"Sublist at index {idx} is too short: {elem}, length = {len(elem)}")  # TODO: DELETE this line
             payload = [elem[col] for elem in unique_payload_block_with_rs]
             col_without_rs, payload_rs = self.error_correction_payload(payload=payload, payload_or_wide='wide')
             if len(col_without_rs) > self.oligos_per_block_len:

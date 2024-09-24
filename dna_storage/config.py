@@ -25,7 +25,7 @@ def build_config(
     output_dir = pathlib.Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # shrink_dict_3_mer = {'AAT': 'X1',
+    # shrink_dict_3_mer = {'AAT': 'X1', #TODO: Delete this, because we are showing 8 k-mers and not 16.
     #                      'ACA': 'X2',
     #                      'ATG': 'X3',
     #                      'AGC': 'X4',
@@ -51,6 +51,9 @@ def build_config(
                          'TTC': 'X7',
                          'TGG': 'X8'}
 
+    # TODO: make sure to delete this hard coded subset_size=4 and bits_per_z=6, vt_syndrome_n = 8
+    #     vt_syndrome_k = 4
+    #     bits_per_syndrome = 3, and that the code will still run
     subset_size = 4
     bits_per_z = 6
     vt_syndrome_n = 8
@@ -118,7 +121,7 @@ def build_config(
         'decoder_results_to_binary': True,
         'binary_results_to_text': True,
         'min_number_of_oligos_per_barcode': max(
-            int(0.1 * number_of_sampled_oligos_from_file), 1
+            int(0.2 * number_of_sampled_oligos_from_file), 1
         ),
         'drop_if_not_exact_number_of_chunks': drop_if_not_exact_number_of_chunks,
         'algorithm_config': {'subset_size': subset_size,
