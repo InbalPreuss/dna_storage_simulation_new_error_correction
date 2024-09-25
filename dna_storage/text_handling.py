@@ -170,16 +170,8 @@ class BinaryResultToText:
 
 def generate_random_text_file(size_kb: int, file: PathLike) -> None:
     text = ''.join(choice(ascii_letters) for i in range(1024*size_kb))
-    # text = 'QEOQoCxcENdKLaXKztzNqCIJQcDibQZEtbfmwXDNcZsKIGGGAKnHgmejoxdJSFPNNCQEOQoCxcENdKLaXKztzNqCIJQcDibQZEtbfmwXDNcZsKIGGGAKnHgmejoxdJSFPNNCQEOQoCxcENdKLaXKztzNqCIJQcDibQZEtbfmwXDNcZsKIGGGAKnHgmejoxdJSFPNNCQEOQoCxcENdKLaXKztzNqCIJQcDibQZEtbfmwXDNcZsKIGGGAKnHgmejoxdJSFPNNCQEOQoCxcENdKLaXKztzNqCIJQcDibQZEtbfmwXDNcZsKIGGGAKnHgmejoxdJSFPNNCQEOQoCxcENdKLaXKztzNqCIJQcDibQZEtbfmwXDNcZsKIGGGAKnHgmejoxdJSFPNNC' #TODO: delete this line - for tests only!!!!!
     with open(file, 'w') as f:
         f.write(text)
-
-# def generate_random_text_file(size_kb: float, file: PathLike) -> None:
-#     num_characters = int(1024 * size_kb)
-#     text = ''.join(choice(ascii_letters) for _ in range(num_characters))
-#     text = 'QEOQoCxcENdKLaXKztzNqCIJQcDibQZEtbfmwXDNcZsKIGGGAKnHgmejoxdJSFPNNC'
-#     with open(file, 'w') as f:
-#         f.write(text)
 
 def text_to_bits(text: str, encoding: str = 'utf-8', errors: str = 'surrogatepass') -> str:
     bits = bin(int.from_bytes(text.encode(encoding, errors), 'big'))[2:]

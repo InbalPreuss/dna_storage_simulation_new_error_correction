@@ -359,7 +359,7 @@ class Decoder:
                 try:
                     codeword_vector = self.k_mer_representation_to_kmer_vector_representation[k_mer_rep]
                 except:
-                    # if we have XErasure then convert the k_mer to a vector like this,
+                    # if we have X0 erasure then convert the k_mer to a vector like this,
                     # or if it doesn't have any representation in syndrome table
                     codeword_vector = [0] * self.payload_coder_vt_syndrome.n
                     filtered_k_mer_rep = tuple(x for x in k_mer_rep if 'X0' not in x)

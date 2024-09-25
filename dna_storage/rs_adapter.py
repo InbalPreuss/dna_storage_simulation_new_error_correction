@@ -220,6 +220,7 @@ class RSWideAdapter:
     def decode(self, payload_encoded, erasures_pos: list) -> list:
         ff.set_globals(*self.ff_globals)
         # payload_as_int = [self._payload_to_int[z] for z in payload_encoded] # TODO: origin code, lets see if the new payload_as_int code is good enough
+        # If erasure then append 0
         payload_as_int = []
         for z in payload_encoded:
             if z == 'Z0':

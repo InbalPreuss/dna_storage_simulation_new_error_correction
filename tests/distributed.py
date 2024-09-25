@@ -81,13 +81,14 @@ def compute_sigma_distance(config: Dict):
 
 def build_runs():
     number_of_oligos_per_barcode = [1000]
-    number_of_sampled_oligos_from_file = [-1, 10, 20, 50, 100, 200, 500, 1000]
-    # number_of_sampled_oligos_from_file = [10, 20, 50]
+    # number_of_sampled_oligos_from_file = [-1, 10, 20, 50, 100, 200, 500, 1000] # TODO: uncomment this
+    number_of_sampled_oligos_from_file = [-1, 10, 15, 20, 25, 30, 35, 40] #TODO: uncomment above
+    # number_of_sampled_oligos_from_file = [1] # TODO: comment this
     oligos_and_samples = list(itertools.product(number_of_oligos_per_barcode, number_of_sampled_oligos_from_file))
     oligos_and_samples = [s for s in oligos_and_samples if s[0] >= s[1]]
 
-    errors = [0.01, 0.001, 0.0001, 0]
-    # errors = [0.01, 0]
+    errors = [0.01, 0.001, 0.0001, 0] # TODO: uncomment this
+    # errors = [0.01, 0] # TODO: comment this
     # sizes_and_bit_sizes = [(3, 9), (5, 12), (7, 13)]
     sizes_and_bit_sizes = [(4, 6)]
     # variable_number_of_sampled_oligos_from_file = {3: 5, 5: 10, 7: 15}
@@ -129,8 +130,8 @@ def build_runs():
     return runs
 
 
-# def run_config_n_times(config_for_run: Dict, n: int = 30): # TODO: remove comment to have 30 repeats
-def run_config_n_times(config_for_run: Dict, n: int = 5):
+# def run_config_n_times(config_for_run: Dict, n: int = 5): # TODO: remove comment to have 10 repeats
+def run_config_n_times(config_for_run: Dict, n: int = 10):
     for run_number in range(n):
         logging.info(f'STARTED {run_number:2d} {config_for_run}')
         run_config(config_for_run=config_for_run, run_number=run_number)
@@ -154,8 +155,8 @@ def run_config(config_for_run: Dict, run_number):
         drop_if_not_exact_number_of_chunks=drop_if_not_exact_number_of_chunks,
     )
 
-    # generate_random_text_file(size_kb=1.31, file=input_text)
     generate_random_text_file(size_kb=10, file=input_text)
+    # generate_random_text_file(size_kb=1, file=input_text) # TODO: change back to 10kb
     print(f"$$$$$$$$ Running {output_dir} $$$$$$$$")
     main(config)
 
@@ -167,20 +168,20 @@ def run_config(config_for_run: Dict, run_number):
     dist_sigma_before_rs, dist_sigma_after_rs_payload, dist_sigma_after_rs_wide, input_data_encoder_results_file_len, input_data_encoder_without_rs_payload_len, input_data_encoder_without_rs_wide_len = compute_sigma_distance(config)
     dist = levenshtein.distance(input_data, output_data)
 
-    # # gzip and delete files
-    # files_in_dir = list(Path(output_dir).iterdir())
-    # exclude = ["temp_shuffle_db", "temp_sort_oligo_db"]
-    # files = [f for f in files_in_dir if f.name not in exclude]
-    # files_delete = [f for f in files_in_dir if f.name in exclude]
-    # for file in files:
-    #     if file.suffix == '.gz':
-    #         f_out_name = file
-    #     else:
-    #         f_out_name = file.with_suffix(file.suffix + ".gz")
-    #     with open(file, "rb") as f_in, gzip.open(f_out_name, "wb") as f_out:
-    #         f_out.writelines(f_in)
-    #     os.remove(file)
-    # [os.remove(f) for f in files_delete] # TODO: remove comments on the zip
+    # gzip and delete files
+    files_in_dir = list(Path(output_dir).iterdir())
+    exclude = ["temp_shuffle_db", "temp_sort_oligo_db"]
+    files = [f for f in files_in_dir if f.name not in exclude]
+    files_delete = [f for f in files_in_dir if f.name in exclude]
+    for file in files:
+        if file.suffix == '.gz':
+            f_out_name = file
+        else:
+            f_out_name = file.with_suffix(file.suffix + ".gz")
+        with open(file, "rb") as f_in, gzip.open(f_out_name, "wb") as f_out:
+            f_out.writelines(f_in)
+        os.remove(file)
+    [os.remove(f) for f in files_delete] # TODO: remove comments on the zip
 
     # write a json results file
     res_file = Path(output_dir) / f"config_and_levenshtein_distance_{dist}.json"
@@ -198,6 +199,15 @@ def run_config(config_for_run: Dict, run_number):
     }
     with open(res_file, 'w') as f:
         json.dump(res, f, indent=4)
+
+    # TODO: delete this json folder, it is only to get the data from the server
+    # Replace 'testing' with 'json'
+    output_dir_jason = output_dir.replace('testing', 'json')
+    res_file_json = Path(output_dir_jason) / f"config_and_levenshtein_distance_{dist}.json"
+    res_file_json.parent.mkdir(parents=True, exist_ok=True)
+    with open(res_file_json, 'w') as f:
+        json.dump(res, f, indent=4)
+
     print(f"@@@@@@@@ Finished {output_dir} @@@@@@@@")
     finished_dir = Path('data/finished')
     finished_dir.mkdir(parents=True, exist_ok=True)
@@ -210,7 +220,7 @@ def main_fn():
     from multiprocessing import Pool, cpu_count
     configs_for_run = build_runs()
     q_listener, q = logger_init()
-    with Pool(cpu_count() - 1, worker_init, [q]) as p:
+    with Pool(cpu_count() - 1, worker_init, [q]) as p: #TODO: change back to cpu_count() -1
         p.map(run_config_n_times, configs_for_run)
 
 if __name__ == '__main__':
