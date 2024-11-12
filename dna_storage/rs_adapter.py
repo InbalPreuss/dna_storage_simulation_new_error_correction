@@ -151,9 +151,9 @@ class RSPayloadAdapter:
         payload_encoded = payload[:self.payload_len]
         for binary_info in binary_list_info_to_concat_with_redundancy:
             for i,decimal_number in zip(range(0, len(binary_info), self.bits_per_syndrome),payload_encoded_as_polynomial[-self.payload_rs_len:]):
-                chunk = binary_info[i:i + self.bits_per_syndrome]
-                binary_array = uts.decimal_to_bits(decimal_number=decimal_number, amount_bits=self.bits_per_syndrome)
-                binary_with_info_n_redundancy = uts.convert_binary_string_to_tuple(binary_array + chunk)
+                b_i_binary_info_for_redundancy = binary_info[i:i + self.bits_per_syndrome]
+                r_i_from_rs_output_binary_array = uts.decimal_to_bits(decimal_number=decimal_number, amount_bits=self.bits_per_syndrome)
+                binary_with_info_n_redundancy = uts.convert_binary_string_to_tuple(r_i_from_rs_output_binary_array + b_i_binary_info_for_redundancy)
                 xs = self.binary_to_k_mer_representation[binary_with_info_n_redundancy]
                 z_vector = self.binary_to_z[binary_with_info_n_redundancy]
                 payload_encoded.append(z_vector)
