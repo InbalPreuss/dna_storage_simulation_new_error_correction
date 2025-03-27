@@ -7,6 +7,8 @@ from dna_storage.shuffle_and_sort import shuffle, sort_oligo_file, sample_oligos
 
 
 def main(config):
+    IS_NEW_ENCODING_DECODING = False
+
     if config['write_text_to_binary']:
         print(f"1. write_text_to_binary")
         text_file_to_binary = TextFileToBinaryFile(input_file=config['input_text_file'],
@@ -42,7 +44,10 @@ def main(config):
                           results_file_without_rs_wide=config['encoder_results_file_without_rs_wide'],
                           z_to_binary=config['algorithm_config']['z_to_binary'],
                           z_to_k_mer_in_binary_representative=config['algorithm_config']['z_to_k_mer_representative'])
-        number_of_blocks = encoder.run()
+        if IS_NEW_ENCODING_DECODING:
+            number_of_blocks = encoder.run_new_encoding()
+        else:
+            number_of_blocks = encoder.run()
 
     # Synthesize
     if config['do_synthesize']:
@@ -103,6 +108,7 @@ def main(config):
                           min_number_of_oligos_per_barcode=config['min_number_of_oligos_per_barcode'],
                           k_mer=config['k_mer'],
                           k_mer_representative_to_z=config['algorithm_config']['k_mer_representative_to_z'],
+                          z_to_k_mer_representative=config['algorithm_config']['z_to_k_mer_representative'],
                           z_to_binary=config['algorithm_config']['z_to_binary'],
                           k_mer_representation_to_kmer_vector_representation=config['algorithm_config']
                           ['k_mer_representation_to_kmer_vector_representation'],
@@ -121,7 +127,10 @@ def main(config):
                           results_file_z_after_rs_payload=config['decoder_results_file_z_after_rs_payload'],
                           results_file_z_after_rs_wide=config['decoder_results_file_z_after_rs_wide'],
                           )
-        decoder.run()
+        if IS_NEW_ENCODING_DECODING:
+            decoder.run_new_decoding()
+        else:
+            decoder.run()
 
     if config['decoder_results_to_binary']:
         print(f"9. results to binary")

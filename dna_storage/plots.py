@@ -896,12 +896,14 @@ import matplotlib.pyplot as plt
 import plotly.express as px
 import seaborn as sns
 import numpy as np
+from scipy.stats import ttest_ind
 
 sns.set_theme(style="ticks")
 
 Path("data/testing/plots").mkdir(parents=True, exist_ok=True)
 
 OUTPUT_FOLDER = Path(os.path.join('..', 'tests', 'data', 'testing')) # TODO: change it to the dir above data/testing/plots
+OUTPUT_FOLDER = Path(os.path.join('..', 'tests', 'data', 'json')) # TODO: change it to the dir above data/testing/plots
 
 
 def delete_double_gz() -> pd.DataFrame:
@@ -1196,7 +1198,7 @@ def draw_errorbar_10_100sample_and_0_001_error_errortypes(df: pd.DataFrame, perc
 # Filter: size = 5
 def draw_errorbar_in_one_graph(df: pd.DataFrame, is_normalize_data, percentage: bool = False):
     # samples = [10, 20, 50, 100]
-    samples = [6, 10, 15, 20, 25, 30, 35, 40]
+    samples = [10, 15, 20, 25, 30]
     error_values = [0.01]
     size = [4]
     title_start = ""
@@ -1214,7 +1216,7 @@ def draw_errorbar_in_one_graph(df: pd.DataFrame, is_normalize_data, percentage: 
         "levenshtein_distance_sigma_after_rs_wide": "input_data_encoder_without_rs_wide_len"
     }
     if is_normalize_data:
-        title_start = "Normalized "
+        # title_start = "Normalized "
         for y_value in y_values.items():
             df[y_value[0]] = df.apply(lambda x: x[y_value[0]] / x.get(y_value[1], 1), axis=1)
 
@@ -1222,8 +1224,16 @@ def draw_errorbar_in_one_graph(df: pd.DataFrame, is_normalize_data, percentage: 
         if idx[1] not in size:
             continue
         for y_value in y_values.keys():
-            title = title_start + "LD as a function of sample size. Error=0.01, 0 (No error correction)\n" + y_value
+            # title = title_start + "LD as a function of sample size. Error=0.01, 0 (No error correction)\n" + y_value
+            if "before_rs" in y_value:
+                title = "Before EC"
+            elif "after_rs_payload" in y_value:
+                title = "After Combinatorial EC"
+            elif "after_rs_wide" in y_value:
+                title = "After RS"
             fig, ax = plt.subplots(figsize=(8, 6))
+            ax.tick_params(axis='x', labelsize=25)
+            ax.tick_params(axis='y', labelsize=25)
 
             fig.subplots_adjust(top=0.85, hspace=0.5, right=0.8)
             for ax_idx, error in enumerate(errors):
@@ -1248,26 +1258,29 @@ def draw_errorbar_in_one_graph(df: pd.DataFrame, is_normalize_data, percentage: 
                     mean_error = np.mean(list(result.values()), axis=1)
 
                     if error == "deletion_error" and error_value == 0:
-                        plt.errorbar(samples, mean_error + 0.004, yerr=std_error, markersize=15,
+                        plt.errorbar(samples, mean_error + 0.004, yerr=std_error, marker='o', markersize=10,
                                      elinewidth=1, capsize=3,
                                      label='all errors' + ' ' + str(error_value), linewidth=3)
                     else:
-                        plt.errorbar(samples, mean_error, yerr=std_error, markersize=15,
+                        plt.errorbar(samples, mean_error, yerr=std_error, marker='o', markersize=10,
                                      elinewidth=1, capsize=3, label=error.replace("_error", "")+' '+str(error_value), linewidth=3)
 
                 if error == "deletion_error":  # reset your error_values list after processing substitution_error
                     error_values.remove(0)
 
-                plt.legend()
-                ax.set_xlabel('sampled oligos from file', x=0.5, y=-5)
-                ax.set_ylabel(title_start+'Levenshtein distance')
+                plt.legend(fontsize=20)
+                ax.set_xlabel('Sampled Reads', x=0.5, y=-5, fontsize=30)
+                ax.set_ylabel(title_start+'Normalized Levenshtein \nDistance', fontsize=30)
 
                 if is_normalize_data:
-                    ax.set_ylim(-0.01, 1)
+                    ax.set_ylim(-0.01, 0.5)
                 else:
                     ax.set_ylim(-0.01, 10000)
 
-            # plt.title(title)
+            # Add dotted vertical lines at each y-tick
+            for y_tick in ax.get_yticks():
+                ax.axhline(y=y_tick, color='gray', linestyle='dotted', linewidth=3)
+            plt.title(title, fontsize= 35)
             fig.tight_layout()
             fig.savefig(Path("data/testing/plots") / "".join(wrap(title + ".svg", 71)))
             plt.close(fig)
@@ -1365,6 +1378,112 @@ def draw_barplot_before_after_rs(df: pd.DataFrame, percentage: bool = False, is_
             fig.savefig(Path("data/testing/plots") / "".join(wrap(title + ".svg", 71)))
             plt.close(fig)
 
+def draw_barplot_before_after_rs_comparison(
+    df1: pd.DataFrame, df2: pd.DataFrame, percentage: bool = False, is_normalize_data: bool = True
+):
+    samples = [20]
+    error_values = [0.01]
+    size = [4]
+    title_start_name = "Comparison_"
+
+    labels = ['Combinatorial EC', '2D RS EC']
+    colors = ['grey', 'blue']
+    error_types = ["substitution_error", "deletion_error", "insertion_error"]
+    y_values = {
+        "levenshtein_distance_sigma_before_rs": "input_data_encoder_results_file_len",
+        "levenshtein_distance_sigma_after_rs_payload": "input_data_encoder_without_rs_payload_len",
+        "levenshtein_distance_sigma_after_rs_wide": "input_data_encoder_without_rs_wide_len",
+    }
+
+    # Normalize data if needed
+    dfs = [df1.copy(deep=True), df2.copy(deep=True)]
+    if is_normalize_data:
+        title_start_name = f"{title_start_name}Normalized "
+        for y_value, ref_col in y_values.items():
+            for df in dfs:
+                df[y_value] = df.apply(lambda x: x[y_value] / x.get(ref_col, 1), axis=1)
+
+    # Initialize the container for data
+    all_data = {error_type: {label: [] for label in labels} for error_type in error_types}
+
+    # Process each dataset independently
+    for df, label in zip(dfs, labels):
+        trials_group = df.groupby(['number_of_oligos_per_barcode', 'size', 'bits_per_z'])
+        for idx, trial_group in trials_group:
+            if idx[1] not in size:
+                continue
+            for error_type in error_types:
+                zero_cols = [e for e in error_types if e != error_type]
+                df_for_err = trial_group.copy()
+                for col in zero_cols:
+                    if col in df_for_err:
+                        df_for_err = df_for_err[df_for_err[col] == 0]
+
+                for error_value in error_values:
+                    df_for_err_filtered = df_for_err[df_for_err[error_type] == error_value]
+                    df_for_err_filtered = df_for_err_filtered[
+                        df_for_err_filtered['number_of_sampled_oligos_from_file'] == samples[0]
+                    ]
+                    if not df_for_err_filtered.empty:
+                        stage_data = [
+                            df_for_err_filtered[y_value].values for y_value in y_values.keys()
+                        ]
+                        all_data[error_type][label].append(stage_data)
+
+    # Plotting
+    data_for_average_calculation = {}
+    for error_type in error_types:
+        fig, ax = plt.subplots(figsize=(10, 6))
+
+        # Plot data for each dataset
+        for i, (label, color) in enumerate(zip(labels, colors)):
+            data = all_data[error_type][label]
+            data_for_average_calculation[label] = [[np.mean(arr) for arr in sublist] for sublist in data]
+            if data:
+                # Flatten the stages
+                data_stages = list(zip(*data))
+                for stage_idx, stage_data in enumerate(data_stages):
+                    positions = [stage_idx + (i * 0.2)]
+                    ax.boxplot(
+                        stage_data,
+                        positions=positions,
+                        widths=0.2,
+                        patch_artist=True,
+                        boxprops=dict(facecolor=color, color=color),
+                        medianprops=dict(color='black'),
+                    )
+
+
+        print(f"error_type={error_type}")
+        print(f"data_for_average_calculation[{labels[0]}]={data_for_average_calculation[labels[0]]}")
+        print(f"data_for_average_calculation[{labels[1]}]={data_for_average_calculation[labels[1]]}")
+        print(f"data_for_average_calculation[{labels[1]}]-data_average[{labels[0]}]={np.array(data_for_average_calculation["2D RS EC"][0]) - np.array(data_for_average_calculation["Combinatorial EC"][0])}")
+        print(f"p_value and t_test of data_for_average_calculation[{labels[0]}] of -After inner EC- ={ttest_ind(np.array(all_data[error_type]["2D RS EC"][0][1]), np.array(all_data[error_type]["Combinatorial EC"][0][1]), equal_var=False)}")
+        print(f"p_value and t_test of data_for_average_calculation[{labels[0]}] of -After outer RS- ={ttest_ind(np.array(all_data[error_type]["2D RS EC"][0][2]), np.array(all_data[error_type]["Combinatorial EC"][0][2]), equal_var=False)}")
+        print("------------------------------------------------------------")
+        # Configure the plot
+        ax.set_xticks(range(len(y_values)))
+        ax.tick_params(axis='y', labelsize=20)
+        ax.set_xticklabels(['Before EC', 'After inner EC', 'After outer RS'], fontsize=25)
+        ax.set_ylabel(
+            "Normalized Levenshtein \nDistance" if is_normalize_data else "Levenshtein Distance",
+            fontsize=27,
+        )
+        ax.set_xlabel("Decoding Stages", fontsize=27)
+        # ax.set_title(f"{title_start_name}Reconstruction Rates for {error_type}", fontsize=18)
+        ax.legend(
+            [plt.Line2D([0], [0], color=color, lw=4) for color in colors],
+            labels,
+            fontsize=20,
+        )
+
+        # Save the plot
+        fig.tight_layout()
+        fig.savefig(Path("data/testing/plots") / f"{title_start_name}_{error_type}.svg")
+        plt.close(fig)
+
+
+
 
 def draw_sampled_vs_error(df: pd.DataFrame):
     fig, ax = plt.subplots()
@@ -1450,6 +1569,8 @@ def main():
     draw_barplot_before_after_rs(df=df, is_normalize_data=False)
     draw_barplot_before_after_rs(df=df, is_normalize_data=True)
     # input("Hit enter to terminate")
+    df2 = pd.read_csv('C:\\Users\\User\\PycharmProjects\\dna_storage_simulation_2d_rs_EC_erasure\\tests\\data\\json\\df_all_data.csv')
+    draw_barplot_before_after_rs_comparison(df1=df, df2=df2, is_normalize_data=True)
 
 
 if __name__ == '__main__':

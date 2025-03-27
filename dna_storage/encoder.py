@@ -97,6 +97,68 @@ class Encoder:
                     binary_list_per_block = []
         return number_of_blocks
 
+    def run_new_encoding(self):
+        number_of_blocks = 0
+        with open(self.file_name, 'r', encoding='utf-8') as file:
+            z_list_accumulation_per_block = []
+            binary_list_per_block = []
+            z_list_accumulation_per_block_after_ec = []
+            for line in file:
+                line = line.strip('\n')
+                z_list = []
+                binary_list = []
+                # line = '011101000111100101011000010110100111' #TODO: delete this - for tests only!!!!!
+                for binary_to_transform in wrap(line, self.bits_per_z):
+                    z = self.binary_to_z(binary=binary_to_transform)
+                    z_list.append(z)
+                    binary_list.append(binary_to_transform)
+                z_list_accumulation_per_block.append(z_list)
+                binary_list_per_block.append(binary_list)
+                if len(z_list_accumulation_per_block) == self.oligos_per_block_len:
+                    number_of_blocks += 1
+                    # z_list_accumulation_with_rs = self.wide_block_rs(z_list_accumulation_per_block) #TODO: I am doing wide rs and then the payload rs,
+
+                    binary_z_list_only_rs = []
+                    # for z_list_only_rs in z_list_accumulation_with_rs[self.oligos_per_block_len:]:
+                    #     binary_z_list_only_rs.append([''.join(map(str, self.z_to_binary[z])) for z in z_list_only_rs])
+                    binary_list_per_block = binary_list_per_block + binary_z_list_only_rs
+                    # TODO: which then the 2 oligos I add I don't have bits of information to add the bits for it.
+                    #  TODO: I need to change and do the rs on the payload, and then on the block.
+                    amount_oligos_per_block_len_to_write = self.oligos_per_block_len
+                    for z_list, binary_list in zip(z_list_accumulation_per_block, binary_list_per_block):
+                        oligo = self.add_payload_rs_symbols_for_error_correction(payload=z_list,
+                                                                                 binary_list=binary_list)
+                        z_list_accumulation_per_block_after_ec.append(oligo.copy())
+                        barcode = next(self.barcode_generator)
+                        barcode = self.add_barcode_rs_symbols_for_error_correction(barcode=barcode)
+                        barcode = "".join(barcode)
+                        oligo.insert(0, barcode)
+                        oligo = ",".join(oligo)
+
+                        self.save_oligo(results_file=self.results_file, oligo=oligo)
+                        if amount_oligos_per_block_len_to_write > 0:
+                            self.save_oligo(results_file=self.results_file_without_rs_wide, oligo=oligo)
+                            amount_oligos_per_block_len_to_write = amount_oligos_per_block_len_to_write - 1
+
+                    z_list_accumulation_with_rs = self.wide_block_rs(z_list_accumulation_per_block_after_ec)
+
+                    for z_list in z_list_accumulation_with_rs[self.oligos_per_block_len:]:
+                        oligo = z_list
+                        barcode = next(self.barcode_generator)
+                        barcode = self.add_barcode_rs_symbols_for_error_correction(barcode=barcode)
+                        barcode = "".join(barcode)
+                        oligo.insert(0, barcode)
+                        oligo = ",".join(oligo)
+                        self.save_oligo(results_file=self.results_file, oligo=oligo)
+                        if amount_oligos_per_block_len_to_write > 0:
+                            self.save_oligo(results_file=self.results_file_without_rs_wide, oligo=oligo)
+                            amount_oligos_per_block_len_to_write = amount_oligos_per_block_len_to_write - 1
+
+                    z_list_accumulation_per_block = []
+                    binary_list_per_block = []
+                    z_list_accumulation_per_block_after_ec = []
+        return number_of_blocks
+
     def binary_to_z(self, binary: str) -> str:
         binary_tuple = tuple([int(b) for b in binary])
         return self.binary_to_z_dict[binary_tuple]
