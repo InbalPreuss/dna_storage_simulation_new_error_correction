@@ -7,11 +7,19 @@ Before running the simulations, it's recommended to set up a virtual environment
 Create a venv (recommended)
 1. Clone the Repository
 ```console
-https://github.com/InbalPreuss/dna_storage_shortmer_simulation.git
-cd dna_storage_shortmer_simulation
-```
-2. Create a Virtual Environment (venv)
+# Clone main simulation repository
+git clone https://github.com/InbalPreuss/dna_storage_simulation_new_error_correction.git
+cd dna_storage_simulation_new_error_correction
 
+# Clone RS repository into this directory
+git clone https://github.com/InbalPreuss/unireedsolomon.git
+
+```
+2. Set Up Python Environment
+(a) Install Python 3.10
+Ensure you're using Python 3.10, as required by the simulation.
+
+(b) Create and Activate a Virtual Environment
 For Unix or MacOS:
 ```console
 python3 -m venv venv
@@ -24,17 +32,30 @@ python -m venv venv
 .\venv\Scripts\activate
 ```
 
-3. Install Dependencies
+(c) Install Dependencies
 ```console
 pip install -r requirements.txt
 ```
+3. Set PYTHONPATH
+Set the PYTHONPATH so Python can find your modules correctly:
+```console
+export PYTHONPATH=$(pwd):$PYTHONPATH
+```
+On Windows, use:
+```console
+set PYTHONPATH=%cd%;%PYTHONPATH%
+```
 
-### Run simulation experiment:
-1. Create simulation data. The data will be in data/testing.
+4. Run the Simulation Script
+The main simulation script is located in the tests directory. To run it:
+```console
+python3 tests/distributed.py
+```
+Alternatively, you can run it in the background:
 ```console
 nohup python3 -m tests.distributed &
 ```
-2. Run plots on the data created. The data will be in .
+5. Run plots on the data created. The data will be in .
 When finished run:
 ```console
 nohup python3 -m dna_storage.plots &
@@ -73,12 +94,18 @@ Each run included:
   * |Σ| = 4,096 (𝑁 = |Ω| = 16, 𝐾 = 5)
   * |Σ| = 8,192 (𝑁 = |Ω| = 16, 𝐾 = 7)
 * Error rates simulated: 0, 0.0001, 0.001, 0.01
-* Sampeling rate simulated: 10 – 1000 reads on average per barcode
+* Sampling rate simulated: 10 – 1000 reads on average per barcode
 
-### Algorithm approce:
+### Algorithm approach:
 1. Encoding  
 1.1. Data padding. To fit the binary data onto the molecule, it must be divided by the molecule size and the block size. If the division results in a gap, the data is padded with zeros to close this gap.  
-1.2. 2D-error correction using Reed-Solomon decoding. Reed Solomon (RS) is used a total of three times. It is applied lengthwise on each sequence twice, error correcting each barcode sequence and then each payload sequence. It is also used crosswise on all the sequences in one block size.   
+1.2. Error correction. A new two-layer error correction scheme is used to address the unique error characteristics of combinatorial DNA synthesis and sequencing. 
+* Inner code:
+The combinatorial DNA sequences are modeled as binary matrices, where each row represents a barcode and each column corresponds to a shortmer position. In this setting, a missing shortmer—a common biological error—is modeled as a bit flip from 1 to 0 in the matrix. To correct these asymmetric errors, we use a novel inner coding strategy based on tensor-product (TP) codes, combining:
+  * Varshamov-Tenengolts (VT) codes to correct asymmetric 1→0 errors,
+  * Reed-Solomon (RS) codes to correct erasures and substitutions.
+* Outer code:
+At the outer level, Reed-Solomon (RS) codes are applied independently to each barcode and payload sequence, enabling error correction across sequences.
 2. Synthesis and sequencing.    
 2.1. Simulating the synthesis process. The synthesis of each combinatorial sequence was simulated separately.
 For a fixed sequence we first draw, from 𝑋`~`𝑁(𝜇 =predtermined, 𝜎^2 = 100), the number of molecules that will represent it. Let this number be x. All k-mers that occur within a single position (cycle) are then generated. To do this, x numbers of the subset are selected, representing the relevant 𝜎. The size of this 
@@ -89,7 +116,7 @@ the error on each full k-mer. This method is closest to the expected error scena
 2.4. Reading and sampling. Several different samples were drawn, to analyze their impact on the accuracy of 
 the data retrieved.
 3. Decoding  
-3.1. Sequence retrieval. To retrieve the original sequence, first each sequence barcode undergoes RS error correction. Next, each sequence payload is reviewed individually, and undergoes RS, too. For sequences in the same block, RS is also done, crosswise on the block.  
+3.1. Sequence retrieval. To retrieve the original sequence, first each sequence barcode undergoes error correction. Next, each sequence payload is reviewed individually, and undergoes RS, too. For sequences in the same block, RS is also done, crosswise on the block.  
 3.2. Grouping by barcode and determining 𝝈 in each position. Once barcode retrieval is complete, sequences are grouped by the same barcode. In each of the groups, all the sequences are reviewed at the same exact position, where we extract the 𝐾 most common k-mers to determine the 𝜎 in that position. In the process of determining the 𝐾 most common k-mers, we may encounter invalid k-mer (not in Ω). Should an invalid k-mer be encountered in the payload sequence, the following steps are taken:  
 • If the length of the sequence is equal to the predetermined length. The sequence is reviewed, and if an invalid k-mer is encountered, which is not part of our alphabet, an 𝑋𝑑𝑢𝑚𝑚𝑦 is inserted instead, followed by skipping 3nts.  
 • If the length of the sequence is smaller than the predetermined length. When Δ<SL*, it indicates that there is a deletion in the sequence. We pad it with a dummy nucleotide 𝑅 that restores it to the predetermined length, and then review the sequence.   
